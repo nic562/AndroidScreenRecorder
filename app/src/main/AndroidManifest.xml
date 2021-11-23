@@ -3,7 +3,8 @@
     xmlns:tools="http://schemas.android.com/tools"
     package="io.github.nic562.screen.recorder">
 
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         tools:ignore="ScopedStorage" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
@@ -30,6 +31,7 @@
         <service
             android:name=".MediaRecordService"
             android:foregroundServiceType="mediaProjection" />
+        <receiver android:name=".RecordNotificationReceiver" />
     </application>
 
 </manifest>

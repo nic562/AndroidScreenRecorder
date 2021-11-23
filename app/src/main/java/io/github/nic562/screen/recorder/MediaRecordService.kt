@@ -1,8 +1,6 @@
 package io.github.nic562.screen.recorder
 
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.Service
+import android.app.*
 import android.content.Context
 import android.content.Intent
 import android.hardware.display.DisplayManager
@@ -10,11 +8,16 @@ import android.hardware.display.VirtualDisplay
 import android.media.MediaRecorder
 import android.media.projection.MediaProjectionManager
 import android.os.Binder
+import android.os.Handler
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
+import java.lang.Exception
 import java.util.logging.Logger
 
 class MediaRecordService : Service() {
+    private val NOTIFICATION_CHANNEL = "recordService"
+    private val NOTIFICATION_ID = 100
+
     private val logger by lazy {
         Logger.getLogger("MediaRecordService")
     }
@@ -28,28 +31,55 @@ class MediaRecordService : Service() {
     }
 
     private var display: VirtualDisplay? = null
-
     private var recorder: MediaRecorder? = null
+    private var isRecording = false
+    private var recordingDuration = 0
+    private val handler by lazy { Handler(mainLooper) }
+    private val openBroadcastIntent by lazy {
+        PendingIntent.getBroadcast(
+            this,
+            999,
+            Intent(this, RecordNotificationReceiver::class.java),
+            PendingIntent.FLAG_UPDATE_CURRENT
+        )
+    }
+
+    private val notificationBuilder by lazy {
+        NotificationCompat.Builder(this, NOTIFICATION_CHANNEL).apply {
+            setSmallIcon(R.drawable.ic_baseline_radio_button_checked_24)
+            setContentTitle(getString(R.string.app_name))
+            setDefaults(Notification.DEFAULT_ALL)
+            setContentIntent(openBroadcastIntent)
+        }
+    }
+
+    interface Callback {
+        fun onRecordStart()
+        fun onRecordError(e: Throwable)
+        fun onRecordStop()
+    }
+
+    private var callback: Callback? = null
 
     override fun onCreate() {
         super.onCreate()
         notificationManager.createNotificationChannel(
             NotificationChannel(
-                "recordService",
-                "${getString(R.string.app_name)}录屏说明",
+                NOTIFICATION_CHANNEL,
+                getString(R.string.recording_notification_description),
                 NotificationManager.IMPORTANCE_DEFAULT
             )
         )
     }
 
-    class MyBinder(private val service: MediaRecordService) : Binder() {
+    class SvBinder(private val service: MediaRecordService) : Binder() {
         fun getService(): MediaRecordService {
             return service
         }
     }
 
-    override fun onBind(intent: Intent?): IBinder? {
-        return MyBinder(this)
+    override fun onBind(intent: Intent?): IBinder {
+        return SvBinder(this)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -63,7 +93,7 @@ class MediaRecordService : Service() {
                 logger.warning("dstPath must be assign!")
                 return@apply
             }
-            logger.warning("willing to record screen into [${dstPath}]")
+            logger.info("willing to record screen into [${dstPath}]")
             if (width < 1) {
                 logger.warning("width must > 0")
                 return@apply
@@ -82,21 +112,32 @@ class MediaRecordService : Service() {
                 logger.warning("intent-data is Null!")
                 return@apply
             }
-            recorder = createRecorder(width, height, dstPath).apply {
-                prepare()
-                startNotification()
-                mediaProjectionManager.getMediaProjection(resultCode, data)?.let {
-                    display = it.createVirtualDisplay(
-                        "MediaRecordService-Display",
-                        width,
-                        height,
-                        dpi,
-                        DisplayManager.VIRTUAL_DISPLAY_FLAG_PUBLIC,
-                        surface,
-                        null, null
-                    )
+            try {
+                recorder = createRecorder(width, height, dstPath).apply {
+                    prepare()
+                    startNotification()
+                    mediaProjectionManager.getMediaProjection(resultCode, data)?.let {
+                        display = it.createVirtualDisplay(
+                            "MediaRecordService-Display",
+                            width,
+                            height,
+                            dpi,
+                            DisplayManager.VIRTUAL_DISPLAY_FLAG_PUBLIC,
+                            surface,
+                            null, null
+                        )
+                    }
+                    start()
+                    isRecording = true
+                    recordingDuration = 0
+                    updateNotification()
+                    callback?.onRecordStart()
                 }
-                start()
+            } catch (e: Exception) {
+                callback?.onRecordError(e)
+                if (callback == null) {
+                    logger.severe(e.message)
+                }
             }
         }
         return super.onStartCommand(intent, flags, startId)
@@ -104,13 +145,33 @@ class MediaRecordService : Service() {
 
     private fun startNotification() {
         startForeground(
-            100,
-            NotificationCompat.Builder(this, "recordService").apply {
-                setSmallIcon(R.mipmap.ic_launcher)
-                setContentTitle("录屏")
-                setContentText("${getString(R.string.app_name)}录屏中...")
-            }.build()
+            NOTIFICATION_ID,
+            notificationBuilder
+                .setContentText(getString(R.string.recording_num, 0))
+                .build()
         )
+    }
+
+    private fun updateNotification() {
+        if (isRecording) {
+            handler.postDelayed({
+                if (!isRecording) {
+                    return@postDelayed
+                }
+                recordingDuration += 1
+                notificationManager.notify(
+                    NOTIFICATION_ID,
+                    notificationBuilder.setContentText(
+                        getString(R.string.recording_num, recordingDuration)
+                    ).build()
+                )
+                updateNotification()
+            }, 1000)
+        }
+    }
+
+    private fun closeNotification() {
+        stopForeground(STOP_FOREGROUND_REMOVE)
     }
 
     private fun createRecorder(
@@ -133,22 +194,33 @@ class MediaRecordService : Service() {
         }
     }
 
-    fun pause() {
-        recorder?.let {
-            it.pause()
-        }
+    fun setCallback(callback: Callback) {
+        this.callback = callback
     }
 
-    fun resume() {
-        recorder?.let {
-            it.resume()
-        }
+    fun isNotificationEnable(): Boolean {
+        return notificationManager.areNotificationsEnabled()
     }
 
-    fun close() {
-        display?.let {
-            it.release()
-        }
+    fun isRecording(): Boolean {
+        return isRecording
+    }
+
+//    fun pause() {
+//        recorder?.let {
+//            it.pause()
+//        }
+//    }
+//
+//    fun resume() {
+//        recorder?.let {
+//            it.resume()
+//        }
+//    }
+
+    fun stop() {
+        isRecording = false
+        display?.release()
         display = null
         recorder?.let {
             it.setOnErrorListener(null)
@@ -156,10 +228,12 @@ class MediaRecordService : Service() {
             it.reset()
             it.release()
         }
+        closeNotification()
+        callback?.onRecordStop()
     }
 
     override fun onDestroy() {
-        close()
+        stop()
         super.onDestroy()
     }
 
