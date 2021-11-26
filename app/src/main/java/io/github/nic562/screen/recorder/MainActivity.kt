@@ -62,6 +62,11 @@ class MainActivity : AppCompatActivity() {
             override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
                 sv = (service as MediaRecordService.SvBinder).getService().apply {
                     setCallback(svCallback)
+                    if (isRecording()) {
+                        svCallback.onRecordStart()
+                    } else {
+                        svCallback.onRecordStop()
+                    }
                 }
             }
 
