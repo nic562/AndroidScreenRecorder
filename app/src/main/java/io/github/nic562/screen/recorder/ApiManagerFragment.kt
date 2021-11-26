@@ -38,9 +38,8 @@ class ApiManagerFragment : BaseFragment(), View.OnClickListener {
 
     override fun onStart() {
         super.onStart()
-        val l = getDB().apiInfoDao.queryBuilder().list()
         apiList.clear()
-        apiList.addAll(l)
+        apiList.addAll(getDB().apiInfoDao.queryBuilder().list())
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
