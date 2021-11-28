@@ -41,6 +41,9 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/provider_paths" />
         </provider>
+        <service
+            android:name=".UploadService"
+            android:process=":uploadService" />
     </application>
 
 </manifest>

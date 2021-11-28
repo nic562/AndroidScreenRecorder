@@ -215,6 +215,10 @@ object Http {
         }
     }
 
+    interface ReadFileProgress {
+        fun progress(total: Long, p: Long)
+    }
+
     private const val end = "\r\n"
     private const val end2 = "\r\n\r\n"
     private const val twoHyphens = "--"
@@ -224,7 +228,8 @@ object Http {
         file: File,
         fileArgumentName: String,
         fileContentType: String,
-        dop: DataOutputStream
+        dop: DataOutputStream,
+        progressListener: ReadFileProgress? = null
     ) {
         dop.apply {
             writeSplit(this)
@@ -232,15 +237,28 @@ object Http {
             writeBytes(end)
             writeBytes("Content-Type: $fileContentType")
             writeBytes(end2)
+            val total = file.length()
             FileInputStream(file).use {
                 val bf = ByteArray(1024)
                 var len: Int
+                var sum = 0L
                 while (it.read(bf).apply { len = this } != -1) {
+                    sum += len
                     write(bf, 0, len)
+                    progressListener?.progress(total, sum)
                 }
             }
             writeBytes(end)
         }
+    }
+
+    interface ReadFilesProgress {
+        fun progress(
+            fileCount: Int,
+            currentFileIdx: Int,
+            currentFileTotal: Long,
+            currentFileP: Long
+        )
     }
 
     fun upload(
@@ -250,7 +268,8 @@ object Http {
         vararg files: File,
         args: TreeMap<String, String>? = null,
         headers: HashMap<String, String>? = null,
-        timeout: Int = 60000
+        timeout: Int = 60000,
+        progressListener: ReadFilesProgress? = null
     ): String {
         if (files.isEmpty()) {
             throw Exception("No file will be upload! Please check `files` arguments.")
@@ -273,8 +292,14 @@ object Http {
                             it.writeBytes(URLEncoder.encode(args[k], "UTF8"))
                             it.writeBytes(end)
                         }
-                    for (f in files) {
-                        writeFileToDataOutputStream(f, fileArgumentName, fileContentType, it)
+                    for (idx in files.indices) {
+                        val f = files[idx]
+                        val pl = if (progressListener == null) null else object : ReadFileProgress {
+                            override fun progress(total: Long, p: Long) {
+                                progressListener.progress(files.count(), idx, total, p)
+                            }
+                        }
+                        writeFileToDataOutputStream(f, fileArgumentName, fileContentType, it, pl)
                     }
                     it.writeBytes(twoHyphens)
                     it.writeBytes(boundary)

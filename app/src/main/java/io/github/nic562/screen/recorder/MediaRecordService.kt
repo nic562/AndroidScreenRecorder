@@ -74,7 +74,6 @@ class MediaRecordService : Service() {
                 }
             }
         }
-
     }
 
     interface Callback {
