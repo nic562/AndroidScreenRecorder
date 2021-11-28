@@ -206,7 +206,7 @@ class MainFragment : BaseFragment(), View.OnClickListener {
                 if (resultCode == AppCompatActivity.RESULT_OK) {
                     data?.let {
                         val file = File(
-                            requireActivity().filesDir,
+                            requireActivity().getExternalFilesDir("screen"),
                             "${System.currentTimeMillis()}.mp4"
                         )
                         svIntent.apply {

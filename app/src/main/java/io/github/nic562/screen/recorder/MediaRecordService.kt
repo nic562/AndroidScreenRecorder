@@ -1,6 +1,7 @@
 package io.github.nic562.screen.recorder
 
-import android.app.*
+import android.app.PendingIntent
+import android.app.Service
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -12,8 +13,9 @@ import android.media.projection.MediaProjectionManager
 import android.os.Binder
 import android.os.Handler
 import android.os.IBinder
+import androidx.core.app.NotificationChannelCompat
 import androidx.core.app.NotificationCompat
-import java.lang.Exception
+import androidx.core.app.NotificationManagerCompat
 import java.util.logging.Logger
 
 class MediaRecordService : Service() {
@@ -25,7 +27,7 @@ class MediaRecordService : Service() {
     }
 
     private val notificationManager by lazy {
-        getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        NotificationManagerCompat.from(this)
     }
 
     private val mediaProjectionManager by lazy {
@@ -49,10 +51,11 @@ class MediaRecordService : Service() {
 
     private val notificationBuilder by lazy {
         NotificationCompat.Builder(this, notificationChannel).apply {
-            setSmallIcon(R.drawable.ic_baseline_radio_button_checked_24)
+            setSmallIcon(R.drawable.ic_stat_record)
             setContentTitle(getString(R.string.app_name))
-            setDefaults(Notification.DEFAULT_ALL)
             setContentIntent(notificationOpenIntent)
+            priority = NotificationCompat.PRIORITY_HIGH
+            setOnlyAlertOnce(true)
         }
     }
 
@@ -84,13 +87,17 @@ class MediaRecordService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        notificationManager.createNotificationChannel(
-            NotificationChannel(
-                notificationChannel,
-                getString(R.string.recording_notification_description),
-                NotificationManager.IMPORTANCE_DEFAULT
-            )
-        )
+        NotificationChannelCompat.Builder(
+            notificationChannel,
+            NotificationManagerCompat.IMPORTANCE_HIGH
+        ).setName(getString(R.string.recording_notification))
+            .setDescription(getString(R.string.recording_notification_description))
+            .setVibrationEnabled(true)
+            .setLightsEnabled(true)
+            .build()
+            .apply {
+                notificationManager.createNotificationChannel(this)
+            }
         IntentFilter().apply {
             addAction(getString(R.string.broadcast_receiver_action_media_record_service))
             registerReceiver(broadcastReceiver, this)
@@ -157,7 +164,6 @@ class MediaRecordService : Service() {
                     isRecording = true
                     recordingDuration = 0
                     updateNotification()
-                    logger.warning("update notification.........!!!")
                     callback?.onRecordStart()
                 }
             } catch (e: Exception) {
@@ -184,7 +190,6 @@ class MediaRecordService : Service() {
                     return@postDelayed
                 }
                 recordingDuration += 1
-                logger.warning("update notification.........!!! $recordingDuration")
                 notificationManager.notify(
                     notificationID,
                     notificationBuilder.setContentText(

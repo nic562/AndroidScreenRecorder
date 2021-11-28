@@ -9,6 +9,7 @@
     <string name="broadcast_receiver_action_media_record_service" translatable="false">io.github.nic562.screen.recorder.MediaRecordService</string>
 
     <string name="confirm2enable_notification">建议开启通知允许，可同步录屏状态以及相关状态控制</string>
+    <string name="recording_notification">录屏状态通知</string>
     <string name="recording_notification_description">录屏状态的显示以及相关状态控制</string>
     <string name="sure">确定</string>
     <string name="recording_num">录屏中(%ds)&#8230;点击通知停止录屏</string>
@@ -25,5 +26,6 @@
     <string name="input_require">这项为必填</string>
     <string name="record_start">开始录屏</string>
     <string name="record_stop">停止录屏</string>
+    <string name="confirm2delete_video">是否确认要删除该记录？</string>
 
 </resources>

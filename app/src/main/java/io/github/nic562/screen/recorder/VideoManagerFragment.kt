@@ -1,18 +1,21 @@
 package io.github.nic562.screen.recorder
 
-import android.net.Uri
+import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.appcompat.widget.AppCompatImageView
-import androidx.preference.PreferenceDataStore
+import androidx.core.content.FileProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.snackbar.Snackbar
 import io.github.nic562.screen.recorder.base.BaseFragment
+import io.github.nic562.screen.recorder.base.SomethingWithImageLoader
 import io.github.nic562.screen.recorder.databinding.FragmentVideoManagerBinding
 import io.github.nic562.screen.recorder.db.VideoInfo
+import io.github.nic562.screen.recorder.tools.DateUtil
 import java.io.File
 
 class VideoManagerFragment : BaseFragment(), View.OnClickListener {
@@ -73,7 +76,7 @@ class VideoManagerFragment : BaseFragment(), View.OnClickListener {
         val data: List<VideoInfo>,
         val onClickListener: View.OnClickListener
     ) :
-        RecyclerView.Adapter<VideoInfoHolder>() {
+        RecyclerView.Adapter<VideoInfoHolder>(), SomethingWithImageLoader {
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VideoInfoHolder {
             val v =
                 LayoutInflater.from(parent.context)
@@ -84,12 +87,16 @@ class VideoManagerFragment : BaseFragment(), View.OnClickListener {
         override fun onBindViewHolder(holder: VideoInfoHolder, position: Int) {
             val d = data[position]
             holder.let {
-                it.root.tag = d.id
-                it.tvTitle.text = d.createTime.toString()
-                it.ivPreview.setImageURI(Uri.fromFile(File(d.filePath)))
+                it.root.tag = d.filePath
+                it.tvTitle.text = DateUtil.dateTimeToStr(d.createTime.time)
+                loadImage(
+                    it.ivPreview,
+                    d.previewPath,
+                    onErrorImgID = R.drawable.ic_baseline_broken_image_24
+                )
                 it.ivUpload.setOnClickListener(onClickListener)
                 it.ivDelete.setOnClickListener(onClickListener)
-                it.ivDelete.tag = position
+                it.ivDelete.tag = d.id
             }
         }
 
@@ -100,15 +107,39 @@ class VideoManagerFragment : BaseFragment(), View.OnClickListener {
 
     override fun onClick(v: View?) {
         when (v?.id) {
+            R.id.root -> {
+                val fp = v.tag as String
+                val uri = FileProvider.getUriForFile(
+                    requireContext(),
+                    "${requireContext().applicationContext.packageName}.provider",
+                    File(fp)
+                )
+                startActivity(Intent(Intent.ACTION_VIEW).apply {
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    setDataAndType(uri, "video/*")
+                })
+            }
             R.id.iv_upload -> {
 
             }
             R.id.iv_delete -> {
-                val p = v.tag as Int
-                val d = videoList[p]
-                getDB().videoInfoDao.delete(d)
-                videoList.removeAt(p)
-                adapter.notifyItemRemoved(p)
+                Snackbar.make(
+                    binding.root,
+                    R.string.confirm2delete_video,
+                    Snackbar.LENGTH_LONG
+                ).setAction(R.string.sure) {
+                    val id = v.tag as Long
+                    for (p in 0 until videoList.size) {
+                        val d = videoList[p]
+                        if (d.id == id) {
+                            File(d.filePath).delete()
+                            File(d.previewPath).delete()
+                            getDB().videoInfoDao.delete(d)
+                            videoList.removeAt(p)
+                            adapter.notifyItemRemoved(p)
+                        }
+                    }
+                }.show()
             }
         }
     }
