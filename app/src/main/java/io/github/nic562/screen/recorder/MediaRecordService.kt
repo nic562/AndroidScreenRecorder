@@ -1,8 +1,10 @@
 package io.github.nic562.screen.recorder
 
 import android.app.*
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.hardware.display.DisplayManager
 import android.hardware.display.VirtualDisplay
 import android.media.MediaRecorder
@@ -15,8 +17,8 @@ import java.lang.Exception
 import java.util.logging.Logger
 
 class MediaRecordService : Service() {
-    private val NOTIFICATION_CHANNEL = "recordService"
-    private val NOTIFICATION_ID = 100
+    private val notificationChannel = "recordService"
+    private val notificationID = 100
 
     private val logger by lazy {
         Logger.getLogger("MediaRecordService")
@@ -34,8 +36,9 @@ class MediaRecordService : Service() {
     private var recorder: MediaRecorder? = null
     private var isRecording = false
     private var recordingDuration = 0
+    private var currentDstFilePath: String? = null
     private val handler by lazy { Handler(mainLooper) }
-    private val openBroadcastIntent by lazy {
+    private val notificationOpenIntent by lazy {
         PendingIntent.getBroadcast(
             this,
             999,
@@ -45,18 +48,36 @@ class MediaRecordService : Service() {
     }
 
     private val notificationBuilder by lazy {
-        NotificationCompat.Builder(this, NOTIFICATION_CHANNEL).apply {
+        NotificationCompat.Builder(this, notificationChannel).apply {
             setSmallIcon(R.drawable.ic_baseline_radio_button_checked_24)
             setContentTitle(getString(R.string.app_name))
             setDefaults(Notification.DEFAULT_ALL)
-            setContentIntent(openBroadcastIntent)
+            setContentIntent(notificationOpenIntent)
         }
+    }
+
+    private val broadcastReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            when (intent?.action) {
+                getString(R.string.broadcast_receiver_action_media_record_service) -> {
+                    when (intent.getStringExtra("action")) {
+                        "stopRecording" -> {
+                            stop()
+                        }
+                    }
+                }
+                else -> {
+                    logger.warning("unKnow broadcastReceiver action: ${intent?.action}")
+                }
+            }
+        }
+
     }
 
     interface Callback {
         fun onRecordStart()
         fun onRecordError(e: Throwable)
-        fun onRecordStop()
+        fun onRecordStop(dstVideoPath: String?)
     }
 
     private var callback: Callback? = null
@@ -65,11 +86,15 @@ class MediaRecordService : Service() {
         super.onCreate()
         notificationManager.createNotificationChannel(
             NotificationChannel(
-                NOTIFICATION_CHANNEL,
+                notificationChannel,
                 getString(R.string.recording_notification_description),
                 NotificationManager.IMPORTANCE_DEFAULT
             )
         )
+        IntentFilter().apply {
+            addAction(getString(R.string.broadcast_receiver_action_media_record_service))
+            registerReceiver(broadcastReceiver, this)
+        }
     }
 
     class SvBinder(private val service: MediaRecordService) : Binder() {
@@ -93,7 +118,6 @@ class MediaRecordService : Service() {
                 logger.warning("dstPath must be assign!")
                 return@apply
             }
-            logger.info("willing to record screen into [${dstPath}]")
             if (width < 1) {
                 logger.warning("width must > 0")
                 return@apply
@@ -106,6 +130,7 @@ class MediaRecordService : Service() {
                 logger.warning("dpi must > 0")
                 return@apply
             }
+            logger.info("willing to record screen[$width x $height] with Dpi#$dpi into [${dstPath}]")
 
             val data = getParcelableExtra<Intent>("data")
             if (data == null) {
@@ -114,6 +139,7 @@ class MediaRecordService : Service() {
             }
             try {
                 recorder = createRecorder(width, height, dstPath).apply {
+                    currentDstFilePath = dstPath
                     prepare()
                     startNotification()
                     mediaProjectionManager.getMediaProjection(resultCode, data)?.let {
@@ -131,13 +157,12 @@ class MediaRecordService : Service() {
                     isRecording = true
                     recordingDuration = 0
                     updateNotification()
+                    logger.warning("update notification.........!!!")
                     callback?.onRecordStart()
                 }
             } catch (e: Exception) {
                 callback?.onRecordError(e)
-                if (callback == null) {
-                    logger.severe(e.message)
-                }
+                logger.severe("MediaRecorder start error: $e")
             }
         }
         return super.onStartCommand(intent, flags, startId)
@@ -145,7 +170,7 @@ class MediaRecordService : Service() {
 
     private fun startNotification() {
         startForeground(
-            NOTIFICATION_ID,
+            notificationID,
             notificationBuilder
                 .setContentText(getString(R.string.recording_num, 0))
                 .build()
@@ -159,8 +184,9 @@ class MediaRecordService : Service() {
                     return@postDelayed
                 }
                 recordingDuration += 1
+                logger.warning("update notification.........!!! $recordingDuration")
                 notificationManager.notify(
-                    NOTIFICATION_ID,
+                    notificationID,
                     notificationBuilder.setContentText(
                         getString(R.string.recording_num, recordingDuration)
                     ).build()
@@ -223,16 +249,21 @@ class MediaRecordService : Service() {
         display?.release()
         display = null
         recorder?.let {
-            it.setOnErrorListener(null)
-            it.stop()
-            it.reset()
-            it.release()
+            try {
+                it.setOnErrorListener(null)
+                it.stop()
+                it.reset()
+                it.release()
+            } catch (e: Exception) {
+                logger.warning("stop recorder error: $e")
+            }
         }
         closeNotification()
-        callback?.onRecordStop()
+        callback?.onRecordStop(currentDstFilePath)
     }
 
     override fun onDestroy() {
+        unregisterReceiver(broadcastReceiver)
         stop()
         super.onDestroy()
     }

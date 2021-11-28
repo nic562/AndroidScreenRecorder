@@ -46,7 +46,7 @@ class MMKVDataStore : PreferenceDataStore() {
         kv.encode(key, value)
     }
 
-    override fun getStringSet(key: String?, defValues: MutableSet<String>?): MutableSet<String> {
+    override fun getStringSet(key: String?, defValues: MutableSet<String>?): MutableSet<String>? {
         return kv.decodeStringSet(key, defValues)
     }
 
