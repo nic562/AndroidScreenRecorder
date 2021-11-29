@@ -1,0 +1,11 @@
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <SwitchPreferenceCompat
+        app:icon="@drawable/ic_baseline_arrow_circle_up_24"
+        app:key="auto_upload"
+        app:summary="@string/auto_upload_description"
+        app:title="@string/auto_upload">
+    </SwitchPreferenceCompat>
+
+</PreferenceScreen>

@@ -35,5 +35,7 @@
     <string name="no_api">当前未定义任何接口</string>
     <string name="select_an_upload_api">请选择一个上传接口</string>
     <string name="already_uploading">正在上传中，请稍后&#8230;</string>
+    <string name="auto_upload">自动上传</string>
+    <string name="auto_upload_description">完成录屏后，根据默认接口自动上传录屏视频</string>
 
 </resources>

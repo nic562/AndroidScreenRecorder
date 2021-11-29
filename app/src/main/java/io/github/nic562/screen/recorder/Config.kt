@@ -12,4 +12,8 @@ object Config {
     fun updateDefaultApiID(id: Long) {
         preference.putLong("checkApiID", id)
     }
+
+    fun getAutoUpload(): Boolean {
+        return preference.getBoolean("auto_upload", false)
+    }
 }

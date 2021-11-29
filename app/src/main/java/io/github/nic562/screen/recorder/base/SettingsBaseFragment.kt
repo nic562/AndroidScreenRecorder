@@ -4,9 +4,8 @@ import android.os.Bundle
 import androidx.preference.PreferenceFragmentCompat
 import io.github.nic562.screen.recorder.Config
 
-abstract class SettingsBaseFragment : PreferenceFragmentCompat() {
-    protected abstract val preferenceRes: Int
-    protected val dataStore by lazy {
+abstract class SettingsBaseFragment(private val preferenceRes: Int) : PreferenceFragmentCompat() {
+    private val dataStore by lazy {
         Config.preference
     }
 

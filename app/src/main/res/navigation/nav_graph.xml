@@ -16,6 +16,9 @@
         <action
             android:id="@+id/action_mainFragment_to_videoManagerFragment"
             app:destination="@id/videoManagerFragment" />
+        <action
+            android:id="@+id/action_mainFragment_to_settingsFragment"
+            app:destination="@id/settingsFragment" />
 
     </fragment>
 
@@ -48,4 +51,8 @@
         android:name="io.github.nic562.screen.recorder.VideoManagerFragment"
         android:label="@string/video_manager_fragment_label"
         tools:layout="@layout/fragment_video_manager" />
+    <fragment
+        android:id="@+id/settingsFragment"
+        android:name="io.github.nic562.screen.recorder.SettingsFragment"
+        android:label="@string/action_settings" />
 </navigation>
