@@ -4,7 +4,6 @@ import android.os.Bundle
 import android.view.*
 import android.widget.TextView
 import androidx.navigation.fragment.findNavController
-import androidx.preference.PreferenceDataStore
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.switchmaterial.SwitchMaterial
@@ -24,7 +23,7 @@ class ApiManagerFragment : BaseFragment(), View.OnClickListener {
     private val binding get() = _binding!!
     private val apiList: ArrayList<ApiInfo> = arrayListOf()
     private val adapter: ApiInfoAdapter by lazy {
-        ApiInfoAdapter(apiList, getPreference(), this)
+        ApiInfoAdapter(apiList, this)
     }
 
     override fun onCreateView(
@@ -96,7 +95,6 @@ class ApiManagerFragment : BaseFragment(), View.OnClickListener {
 
     private class ApiInfoAdapter(
         val data: List<ApiInfo>,
-        val preference: PreferenceDataStore,
         val onClickListener: View.OnClickListener
     ) :
         RecyclerView.Adapter<ApiInfoHolder>() {
@@ -110,7 +108,7 @@ class ApiManagerFragment : BaseFragment(), View.OnClickListener {
             val d = data[position]
             holder.let {
                 it.tvTitle.text = d.title
-                it.swChecked.isChecked = d.id == preference.getLong("checkApiID", -1)
+                it.swChecked.isChecked = d.id == Config.getDefaultApiID()
                 it.swChecked.tag = d.id
                 it.root.tag = d.id
             }
@@ -127,8 +125,8 @@ class ApiManagerFragment : BaseFragment(), View.OnClickListener {
             if (this is SwitchMaterial) {
                 try {
                     val id: Long = (this.tag ?: return) as Long
-                    val oldID = getPreference().getLong("checkApiID", -1)
-                    getPreference().putLong("checkApiID", if (this.isChecked) id else -1)
+                    val oldID = Config.getDefaultApiID()
+                    Config.updateDefaultApiID(if (this.isChecked) id else -1)
                     if (id != oldID) {
                         for (i in 0 until apiList.size) {
                             if (apiList[i].id == oldID) {

@@ -131,6 +131,11 @@ class MainFragment : BaseFragment(), View.OnClickListener {
         checkRecorderStatus()
     }
 
+    override fun onDestroyView() {
+        super.onDestroyView()
+        _binding = null
+    }
+
     override fun onDestroy() {
         requireActivity().unbindService(svConn)
         super.onDestroy()

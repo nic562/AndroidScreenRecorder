@@ -1,11 +1,14 @@
 package io.github.nic562.screen.recorder
 
-import android.content.Intent
+import android.content.*
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ProgressBar
 import android.widget.TextView
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.AppCompatImageView
 import androidx.core.content.FileProvider
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -22,8 +25,51 @@ class VideoManagerFragment : BaseFragment(), View.OnClickListener {
     private var _binding: FragmentVideoManagerBinding? = null
     private val binding get() = _binding!!
     private val videoList: ArrayList<VideoInfo> = arrayListOf()
+    private val uploadStatus = hashMapOf<Long, Int>()
     private val adapter: VideoInfoAdapter by lazy {
-        VideoInfoAdapter(videoList, this)
+        VideoInfoAdapter(videoList, uploadStatus, this)
+    }
+
+    private val svIntent by lazy {
+        Intent(requireContext(), UploadService::class.java)
+    }
+
+    private val broadcastReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            val id = intent?.getLongExtra("id", -1L)
+            when (val act = intent?.getStringExtra("action")) {
+                "start" -> {
+                    id?.let {
+                        uploadStatus[it] = 0
+                        notifyVideoItemChangedByID(it)
+                    }
+                }
+                "progress" -> {
+                    id?.let {
+                        uploadStatus[it] = intent.getIntExtra("progress", 0)
+                        notifyVideoItemChangedByID(it)
+                    }
+                }
+                "finish" -> {
+                    id?.let {
+                        uploadStatus.remove(it)
+                        notifyVideoItemChangedByID(it)
+                    }
+                }
+                "error" -> {
+                    id?.let {
+                        uploadStatus.remove(it)
+                        notifyVideoItemChangedByID(it)
+                    }
+                    intent.getStringExtra("error")?.let {
+                        toast(it)
+                    }
+                }
+                else -> {
+                    logger.warning("unKnow broadcastReceiver action: $act")
+                }
+            }
+        }
     }
 
     override fun onCreateView(
@@ -48,11 +94,21 @@ class VideoManagerFragment : BaseFragment(), View.OnClickListener {
                 LinearLayoutManager(requireContext(), LinearLayoutManager.VERTICAL, false)
             rvVideoList.adapter = adapter
         }
+
+        IntentFilter().apply {
+            addAction(getString(R.string.broadcast_receiver_action_upload_manager))
+            requireActivity().registerReceiver(broadcastReceiver, this)
+        }
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+    }
+
+    override fun onDestroy() {
+        requireActivity().unregisterReceiver(broadcastReceiver)
+        super.onDestroy()
     }
 
     private class VideoInfoHolder(
@@ -64,6 +120,7 @@ class VideoManagerFragment : BaseFragment(), View.OnClickListener {
         val tvTitle: TextView = v.findViewById(R.id.tv_title)
         val ivDelete: AppCompatImageView = v.findViewById(R.id.iv_delete)
         val ivUpload: AppCompatImageView = v.findViewById(R.id.iv_upload)
+        val progressBar: ProgressBar = v.findViewById(R.id.pb_upload)
 
         init {
             root.setOnClickListener(onClickListener)
@@ -74,6 +131,7 @@ class VideoManagerFragment : BaseFragment(), View.OnClickListener {
 
     private class VideoInfoAdapter(
         val data: List<VideoInfo>,
+        val upStatus: Map<Long, Int>,
         val onClickListener: View.OnClickListener
     ) :
         RecyclerView.Adapter<VideoInfoHolder>(), SomethingWithImageLoader {
@@ -94,9 +152,23 @@ class VideoManagerFragment : BaseFragment(), View.OnClickListener {
                     d.previewPath,
                     onErrorImgID = R.drawable.ic_baseline_broken_image_24
                 )
-                it.ivUpload.setOnClickListener(onClickListener)
-                it.ivDelete.setOnClickListener(onClickListener)
+                it.ivUpload.tag = d
                 it.ivDelete.tag = d.id
+                val p = upStatus[d.id]
+                if (p == null) {
+                    it.progressBar.visibility = View.GONE
+                } else {
+                    when(p) {
+                        -1 -> {
+                            it.progressBar.isIndeterminate = true
+                        }
+                        else -> {
+                            it.progressBar.isIndeterminate = false
+                            it.progressBar.progress = p
+                        }
+                    }
+                    it.progressBar.visibility = View.VISIBLE
+                }
             }
         }
 
@@ -120,7 +192,12 @@ class VideoManagerFragment : BaseFragment(), View.OnClickListener {
                 })
             }
             R.id.iv_upload -> {
-
+                val vd = v.tag as VideoInfo
+                if (uploadStatus[vd.id] != null) {
+                    toast(getString(R.string.already_uploading))
+                    return
+                }
+                openApiDialog(vd)
             }
             R.id.iv_delete -> {
                 Snackbar.make(
@@ -142,5 +219,51 @@ class VideoManagerFragment : BaseFragment(), View.OnClickListener {
                 }.show()
             }
         }
+    }
+
+    private fun openApiDialog(videoInfo: VideoInfo) {
+        val defID = Config.getDefaultApiID()
+        val api = getDB().apiInfoDao.loadAll()
+        if (api.size == 0) {
+            toast(getString(R.string.no_api))
+            return
+        }
+        val names = arrayListOf<String>()
+        for (x in api) {
+            if (x.id == defID) {
+                names.add("${x.title}(默认)")
+            } else {
+                names.add(x.title)
+            }
+        }
+        AlertDialog.Builder(requireContext()).setTitle(R.string.select_an_upload_api)
+            .setSingleChoiceItems(StringArrayAdapter(requireContext(), names), 0) { dialog, which ->
+                val apiInfo = api[which]
+                dialog.dismiss()
+                requireActivity().startService(svIntent.apply {
+                    putExtra("apiID", apiInfo.id)
+                    putExtra("videoID", videoInfo.id)
+                })
+                uploadStatus[videoInfo.id] = -1
+                notifyVideoItemChangedByID(videoInfo.id)
+            }
+            .show()
+    }
+
+    private fun notifyVideoItemChangedByID(id: Long) {
+        findVideoIndexByID(id).let { idx ->
+            if (idx >= 0) {
+                adapter.notifyItemChanged(idx)
+            }
+        }
+    }
+
+    private fun findVideoIndexByID(id: Long): Int {
+        for (i in 0 until videoList.size) {
+            if (videoList[i].id == id) {
+                return i
+            }
+        }
+        return -1
     }
 }

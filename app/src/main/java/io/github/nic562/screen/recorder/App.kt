@@ -17,13 +17,14 @@ class App : Application() {
         DaoMaster(helper.writableDb).newSession()
     }
 
-    val perferences by lazy {
+    private val preference by lazy {
         MMKVDataStore()
     }
 
     override fun onCreate() {
         super.onCreate()
         MMKV.initialize(this)
+        Config.preference = preference
     }
 
     fun getDB(): DaoSession {

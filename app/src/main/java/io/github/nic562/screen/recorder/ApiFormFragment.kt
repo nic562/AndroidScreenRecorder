@@ -56,6 +56,7 @@ class ApiFormFragment : BaseFormFragment() {
                 etFileArg to tilFileArg
             )
             atvMethod.setAdapter(StringArrayAdapter(requireContext(), arrayMethodString))
+            atvMethod.setText(ApiInfo.Method.POST.name)
             for (x in ll) {
                 setOnInputChangeSetNullError(x.first, x.second)
             }
@@ -78,7 +79,7 @@ class ApiFormFragment : BaseFormFragment() {
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        when(item.itemId) {
+        when (item.itemId) {
             R.id.action_save -> {
                 if (submitForm(requireFieldList)) {
                     findNavController().navigate(R.id.action_apiFormFragment_to_apiManagerFragment)
@@ -136,13 +137,13 @@ class ApiFormFragment : BaseFormFragment() {
         } catch (e: SQLiteConstraintException) {
             "UNIQUE SQL error: ${e.message}".apply {
                 logger.severe(this)
-                toastError(this)
+                toast(this)
             }
             return false
         } catch (e: Exception) {
             "UnKnow error: ${e.message}".apply {
                 logger.severe(this)
-                toastError(this)
+                toast(this)
             }
             return false
         }

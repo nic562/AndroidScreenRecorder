@@ -8,14 +8,18 @@
     android:layout_marginBottom="2dp"
     android:background="@color/gray_200"
     android:foreground="?attr/selectableItemBackground"
-    android:padding="10dp">
+    android:paddingTop="10dp">
 
     <androidx.appcompat.widget.AppCompatImageView
         android:id="@+id/iv_preview"
         android:layout_width="60dp"
-        android:layout_height="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginStart="10dp"
         android:scaleType="centerCrop"
+        app:layout_constraintBottom_toTopOf="@id/pb_upload"
         app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_goneMarginBottom="10dp"
         app:srcCompat="@drawable/ic_baseline_broken_image_24" />
 
     <TextView
@@ -24,10 +28,11 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="10dp"
         android:text="@string/app_name"
-        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/pb_upload"
         app:layout_constraintEnd_toStartOf="@id/iv_delete"
         app:layout_constraintStart_toEndOf="@id/iv_preview"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_goneMarginBottom="10dp" />
 
     <androidx.appcompat.widget.AppCompatImageView
         android:id="@+id/iv_delete"
@@ -35,16 +40,32 @@
         android:layout_height="wrap_content"
         android:layout_marginEnd="20dp"
         android:src="@drawable/ic_baseline_delete_24"
-        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/pb_upload"
         app:layout_constraintEnd_toStartOf="@id/iv_upload"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_goneMarginBottom="10dp" />
 
     <androidx.appcompat.widget.AppCompatImageView
         android:id="@+id/iv_upload"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginEnd="15dp"
         android:src="@drawable/ic_baseline_arrow_circle_up_24"
+        app:layout_constraintBottom_toTopOf="@id/pb_upload"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_goneMarginBottom="10dp" />
+
+    <ProgressBar
+        android:id="@+id/pb_upload"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="0dp"
+        android:layout_height="5dp"
+        android:layout_marginTop="2dp"
+        android:max="100"
+        android:progress="60"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/iv_preview" />
 </androidx.constraintlayout.widget.ConstraintLayout>
