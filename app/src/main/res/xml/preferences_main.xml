@@ -2,10 +2,17 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <SwitchPreferenceCompat
+        android:defaultValue="false"
         app:icon="@drawable/ic_baseline_arrow_circle_up_24"
         app:key="auto_upload"
         app:summary="@string/auto_upload_description"
-        app:title="@string/auto_upload">
-    </SwitchPreferenceCompat>
+        app:title="@string/auto_upload" />
+
+    <SwitchPreferenceCompat
+        android:defaultValue="false"
+        app:icon="@drawable/ic_baseline_auto_delete_24"
+        app:key="auto_delete"
+        app:summary="@string/auto_delete_description"
+        app:title="@string/auto_delete" />
 
 </PreferenceScreen>

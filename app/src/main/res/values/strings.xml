@@ -27,7 +27,7 @@
     <string name="api_header">请求头</string>
     <string name="api_body">请求体</string>
     <string name="api_file_arg_name">上传文件参数名</string>
-    <string name="help_key_value">以[Key=Value]的形式，一行为一组</string>
+    <string name="help_key_value">以[Key=Value]的形式，一行为一组。当前可用的占位参数：$create_time:创建时间</string>
     <string name="input_require">这项为必填</string>
     <string name="record_start">开始录屏</string>
     <string name="record_stop">停止录屏</string>
@@ -37,5 +37,7 @@
     <string name="already_uploading">正在上传中，请稍后&#8230;</string>
     <string name="auto_upload">自动上传</string>
     <string name="auto_upload_description">完成录屏后，根据默认接口自动上传录屏视频</string>
+    <string name="auto_delete">视频自动删除</string>
+    <string name="auto_delete_description">完成上传后自动删除录屏视频记录</string>
 
 </resources>

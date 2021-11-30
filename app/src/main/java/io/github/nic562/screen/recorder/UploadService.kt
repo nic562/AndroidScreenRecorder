@@ -15,6 +15,7 @@ import androidx.core.app.NotificationManagerCompat
 import io.github.nic562.screen.recorder.db.ApiInfo
 import io.github.nic562.screen.recorder.db.VideoInfo
 import io.github.nic562.screen.recorder.db.dao.DaoSession
+import io.github.nic562.screen.recorder.tools.DateUtil
 import io.github.nic562.screen.recorder.tools.Http
 import java.io.File
 import java.util.*
@@ -130,6 +131,9 @@ class UploadService : Service() {
                 val video = p.second
                 currentVideoID = video.id
                 callback?.onUploadStart(video.id)
+                val argMap = hashMapOf<String, String>()
+                argMap["create_time"] = DateUtil.dateTimeToStr(video.createTime.time)
+
                 val rs: String? = try {
                     Http.upload(
                         api.url, api.uploadFileArgName, "video/mp4", File(video.filePath),
@@ -140,7 +144,13 @@ class UploadService : Service() {
                                 if (rs.size != 2) {
                                     continue
                                 }
-                                put(rs[0], rs[1])
+                                val k = rs[1]
+                                val idx = k.indexOf("$")
+                                if (idx == -1) {
+                                    put(rs[0], k)
+                                } else {
+                                    put(rs[0], argMap[k.substring(idx + 1)] ?: k)
+                                }
                             }
                         },
                         headers = HashMap<String, String>().apply {
@@ -296,6 +306,7 @@ class UploadService : Service() {
                     notifyUi("error", videoID, Bundle().apply {
                         putString("error", e.message ?: e.localizedMessage ?: e.toString())
                     })
+                    Log.w("UploadThread", "uploadThread error:", e)
                 }
 
                 override fun onUploadFinish(videoID: Long, result: String) {

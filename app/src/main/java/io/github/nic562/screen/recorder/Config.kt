@@ -16,4 +16,8 @@ object Config {
     fun getAutoUpload(): Boolean {
         return preference.getBoolean("auto_upload", false)
     }
+
+    fun getAutoDelete(): Boolean {
+        return preference.getBoolean("auto_delete", false)
+    }
 }
