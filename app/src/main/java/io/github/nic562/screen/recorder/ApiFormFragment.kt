@@ -82,7 +82,7 @@ class ApiFormFragment : BaseFormFragment() {
         when (item.itemId) {
             R.id.action_save -> {
                 if (submitForm(requireFieldList)) {
-                    findNavController().navigate(R.id.action_apiFormFragment_to_apiManagerFragment)
+                    findNavController().navigateUp()
                 }
                 return true
             }
@@ -90,7 +90,7 @@ class ApiFormFragment : BaseFormFragment() {
                 apiInfo?.apply {
                     getDB().apiInfoDao.delete(this)
                 }
-                findNavController().navigate(R.id.action_apiFormFragment_to_apiManagerFragment)
+                findNavController().navigateUp()
                 return true
             }
         }
@@ -111,6 +111,7 @@ class ApiFormFragment : BaseFormFragment() {
             etHeader.setText(info.header)
             etBody.setText(info.body)
             etFileArg.setText(info.uploadFileArgName)
+            swArgsEncoding.isChecked = info.isBodyEncoding ?: false
         }
     }
 
@@ -127,6 +128,7 @@ class ApiFormFragment : BaseFormFragment() {
             a.header = etHeader.text.toString()
             a.body = etBody.text.toString()
             a.uploadFileArgName = etFileArg.text.toString()
+            a.isBodyEncoding = swArgsEncoding.isChecked
         }
         try {
             if (a.id == null || a.id == 0L) {

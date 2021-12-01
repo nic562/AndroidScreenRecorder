@@ -6,6 +6,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.res.Resources
 import android.os.Bundle
 import android.os.IBinder
 import android.util.Log
@@ -18,6 +19,7 @@ import io.github.nic562.screen.recorder.db.dao.DaoSession
 import io.github.nic562.screen.recorder.tools.DateUtil
 import io.github.nic562.screen.recorder.tools.Http
 import java.io.File
+import java.io.InterruptedIOException
 import java.util.*
 import java.util.logging.Logger
 import kotlin.collections.HashMap
@@ -43,9 +45,9 @@ class UploadService : Service() {
     private val broadcastReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             when (val act = intent?.getStringExtra("action")) {
-                "stop" -> {
+                "cancel" -> {
                     thread?.let {
-                        if (it.isAlive) it.interrupt()
+                        if (it.isAlive) it.cancelOnce = true
                     }
                 }
                 else -> {
@@ -59,7 +61,7 @@ class UploadService : Service() {
         PendingIntent.getBroadcast(
             this, 999,
             Intent(getString(R.string.broadcast_receiver_action_upload_service)).apply {
-                putExtra("action", "stop")
+                putExtra("action", "cancel")
             },
             PendingIntent.FLAG_UPDATE_CURRENT
         )
@@ -68,7 +70,7 @@ class UploadService : Service() {
     private val notificationBuilder by lazy {
         NotificationCompat.Builder(this, notificationChannel).apply {
             setSmallIcon(R.drawable.ic_baseline_arrow_circle_up_24)
-            setContentTitle(getString(R.string.app_name))
+            setContentTitle(getString(R.string.uploading_video))
             priority = NotificationCompat.PRIORITY_LOW
             setOnlyAlertOnce(true)
             addAction(
@@ -98,13 +100,20 @@ class UploadService : Service() {
     }
 
     private class MyThread(
+        val resource: Resources,
         val taskList: ArrayList<Pair<ApiInfo, VideoInfo>>,
         val progressListener: ReadFilesProgress? = null,
         val callback: Callback? = null
     ) : Thread("ApiUploadThread") {
         private var currentVideoID: Long? = null
+        var cancelOnce = false
+
         private val progressL by lazy {
             object : Http.ReadFilesProgress {
+                override fun keepWorking(): Boolean {
+                    return !cancelOnce
+                }
+
                 override fun progress(
                     fileCount: Int,
                     currentFileIdx: Int,
@@ -163,8 +172,20 @@ class UploadService : Service() {
                                 put(rs[0], rs[1])
                             }
                         },
-                        progressListener = progressL
+                        progressListener = progressL,
+                        encoding = api.isBodyEncoding
                     )
+                } catch (e: InterruptedIOException) {
+                    cancelOnce = false
+                    if (callback == null) {
+                        throw e
+                    } else {
+                        callback.onUploadError(
+                            video.id,
+                            InterruptedIOException(resource.getString(R.string.upload_cancel))
+                        )
+                        null
+                    }
                 } catch (e: Exception) {
                     if (callback == null) {
                         throw e
@@ -220,6 +241,8 @@ class UploadService : Service() {
                 logger.warning("apiID or videoID must > 0")
                 return@apply
             }
+            getDB().apiInfoDao.detachAll()
+            getDB().videoInfoDao.detachAll()
             val api = getDB().apiInfoDao.load(apiID)
             if (api == null) {
                 logger.warning("not found ApiInfo for: $apiID")
@@ -277,6 +300,7 @@ class UploadService : Service() {
 
     private fun initThread(): MyThread {
         return MyThread(
+            resources,
             taskList,
             progressListener = object : ReadFilesProgress {
                 override fun progress(
@@ -289,7 +313,7 @@ class UploadService : Service() {
                     val ps = (currentFileP.toDouble() / currentFileTotal * 100).roundToInt()
                     sendNotification(
                         videoID,
-                        "正在上传文件：${currentFileIdx}/${fileCount} [${currentFileP}/${currentFileTotal}]",
+                        "${ps}% ... [${currentFileP}/${currentFileTotal}]",
                         ps
                     )
                     notifyUi("progress", videoID, Bundle().apply {

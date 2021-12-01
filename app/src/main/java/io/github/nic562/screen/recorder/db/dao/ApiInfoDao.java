@@ -33,7 +33,8 @@ public class ApiInfoDao extends AbstractDao<ApiInfo, Long> {
         public final static Property Method = new Property(3, String.class, "method", false, "METHOD");
         public final static Property Header = new Property(4, String.class, "header", false, "HEADER");
         public final static Property Body = new Property(5, String.class, "body", false, "BODY");
-        public final static Property UploadFileArgName = new Property(6, String.class, "uploadFileArgName", false, "UPLOAD_FILE_ARG_NAME");
+        public final static Property IsBodyEncoding = new Property(6, Boolean.class, "isBodyEncoding", false, "IS_BODY_ENCODING");
+        public final static Property UploadFileArgName = new Property(7, String.class, "uploadFileArgName", false, "UPLOAD_FILE_ARG_NAME");
     }
 
     private final MethodConverter methodConverter = new MethodConverter();
@@ -56,7 +57,8 @@ public class ApiInfoDao extends AbstractDao<ApiInfo, Long> {
                 "\"METHOD\" TEXT NOT NULL ," + // 3: method
                 "\"HEADER\" TEXT," + // 4: header
                 "\"BODY\" TEXT," + // 5: body
-                "\"UPLOAD_FILE_ARG_NAME\" TEXT NOT NULL );"); // 6: uploadFileArgName
+                "\"IS_BODY_ENCODING\" INTEGER," + // 6: isBodyEncoding
+                "\"UPLOAD_FILE_ARG_NAME\" TEXT NOT NULL );"); // 7: uploadFileArgName
         // Add Indexes
         db.execSQL("CREATE UNIQUE INDEX " + constraint + "IDX_API_INFO_TITLE ON \"API_INFO\"" +
                 " (\"TITLE\" ASC);");
@@ -93,7 +95,12 @@ public class ApiInfoDao extends AbstractDao<ApiInfo, Long> {
         if (body != null) {
             stmt.bindString(6, body);
         }
-        stmt.bindString(7, entity.getUploadFileArgName());
+ 
+        Boolean isBodyEncoding = entity.getIsBodyEncoding();
+        if (isBodyEncoding != null) {
+            stmt.bindLong(7, isBodyEncoding ? 1L: 0L);
+        }
+        stmt.bindString(8, entity.getUploadFileArgName());
     }
 
     @Override
@@ -117,7 +124,12 @@ public class ApiInfoDao extends AbstractDao<ApiInfo, Long> {
         if (body != null) {
             stmt.bindString(6, body);
         }
-        stmt.bindString(7, entity.getUploadFileArgName());
+ 
+        Boolean isBodyEncoding = entity.getIsBodyEncoding();
+        if (isBodyEncoding != null) {
+            stmt.bindLong(7, isBodyEncoding ? 1L: 0L);
+        }
+        stmt.bindString(8, entity.getUploadFileArgName());
     }
 
     @Override
@@ -134,7 +146,8 @@ public class ApiInfoDao extends AbstractDao<ApiInfo, Long> {
             methodConverter.convertToEntityProperty(cursor.getString(offset + 3)), // method
             cursor.isNull(offset + 4) ? null : cursor.getString(offset + 4), // header
             cursor.isNull(offset + 5) ? null : cursor.getString(offset + 5), // body
-            cursor.getString(offset + 6) // uploadFileArgName
+            cursor.isNull(offset + 6) ? null : cursor.getShort(offset + 6) != 0, // isBodyEncoding
+            cursor.getString(offset + 7) // uploadFileArgName
         );
         return entity;
     }
@@ -147,7 +160,8 @@ public class ApiInfoDao extends AbstractDao<ApiInfo, Long> {
         entity.setMethod(methodConverter.convertToEntityProperty(cursor.getString(offset + 3)));
         entity.setHeader(cursor.isNull(offset + 4) ? null : cursor.getString(offset + 4));
         entity.setBody(cursor.isNull(offset + 5) ? null : cursor.getString(offset + 5));
-        entity.setUploadFileArgName(cursor.getString(offset + 6));
+        entity.setIsBodyEncoding(cursor.isNull(offset + 6) ? null : cursor.getShort(offset + 6) != 0);
+        entity.setUploadFileArgName(cursor.getString(offset + 7));
      }
     
     @Override

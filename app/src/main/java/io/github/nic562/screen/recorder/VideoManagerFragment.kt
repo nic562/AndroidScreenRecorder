@@ -11,6 +11,7 @@ import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.AppCompatImageView
 import androidx.core.content.FileProvider
+import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.snackbar.Snackbar
@@ -52,7 +53,7 @@ class VideoManagerFragment : BaseFragment(), View.OnClickListener {
                 }
                 "finish" -> {
                     id?.let {
-                        uploadStatus.remove(it)
+                        uploadStatus[it] = -2
                         notifyVideoItemChangedByID(it)
                     }
                 }
@@ -62,7 +63,11 @@ class VideoManagerFragment : BaseFragment(), View.OnClickListener {
                         notifyVideoItemChangedByID(it)
                     }
                     intent.getStringExtra("error")?.let {
-                        toast(it)
+                        findNavController().navigate(
+                            R.id.action_videoManagerFragment_to_logFragment,
+                            Bundle().apply {
+                                putString("log", it)
+                            })
                     }
                 }
                 else -> {
@@ -94,11 +99,19 @@ class VideoManagerFragment : BaseFragment(), View.OnClickListener {
                 LinearLayoutManager(requireContext(), LinearLayoutManager.VERTICAL, false)
             rvVideoList.adapter = adapter
         }
+    }
 
+    override fun onResume() {
+        super.onResume()
         IntentFilter().apply {
             addAction(getString(R.string.broadcast_receiver_action_upload_manager))
             requireActivity().registerReceiver(broadcastReceiver, this)
         }
+    }
+
+    override fun onPause() {
+        requireActivity().unregisterReceiver(broadcastReceiver)
+        super.onPause()
     }
 
     override fun onDestroyView() {
@@ -107,7 +120,6 @@ class VideoManagerFragment : BaseFragment(), View.OnClickListener {
     }
 
     override fun onDestroy() {
-        requireActivity().unregisterReceiver(broadcastReceiver)
         super.onDestroy()
     }
 
@@ -118,6 +130,7 @@ class VideoManagerFragment : BaseFragment(), View.OnClickListener {
         val root = v
         val ivPreview: AppCompatImageView = v.findViewById(R.id.iv_preview)
         val tvTitle: TextView = v.findViewById(R.id.tv_title)
+        val tvUploadStatus: TextView = v.findViewById(R.id.tv_upload_status)
         val ivDelete: AppCompatImageView = v.findViewById(R.id.iv_delete)
         val ivUpload: AppCompatImageView = v.findViewById(R.id.iv_upload)
         val progressBar: ProgressBar = v.findViewById(R.id.pb_upload)
@@ -155,19 +168,30 @@ class VideoManagerFragment : BaseFragment(), View.OnClickListener {
                 it.ivUpload.tag = d
                 it.ivDelete.tag = d.id
                 val p = upStatus[d.id]
+                it.tvUploadStatus.text = null
                 if (p == null) {
                     it.progressBar.visibility = View.GONE
                 } else {
-                    when(p) {
+                    when (p) {
                         -1 -> {
-                            it.progressBar.isIndeterminate = true
+                            it.progressBar.apply {
+                                isIndeterminate = true
+                                visibility = View.VISIBLE
+                            }
+                            it.tvUploadStatus.setText(R.string.upload_wait)
+                        }
+                        -2 -> {
+                            it.tvUploadStatus.setText(R.string.upload_finish)
+                            it.progressBar.visibility = View.GONE
                         }
                         else -> {
-                            it.progressBar.isIndeterminate = false
-                            it.progressBar.progress = p
+                            it.progressBar.apply {
+                                isIndeterminate = false
+                                visibility = View.VISIBLE
+                                progress = p
+                            }
                         }
                     }
-                    it.progressBar.visibility = View.VISIBLE
                 }
             }
         }
@@ -193,8 +217,9 @@ class VideoManagerFragment : BaseFragment(), View.OnClickListener {
             }
             R.id.iv_upload -> {
                 val vd = v.tag as VideoInfo
-                if (uploadStatus[vd.id] != null) {
-                    toast(getString(R.string.already_uploading))
+                val st = uploadStatus[vd.id]
+                if (st != null && st != -2) {
+                    toast(getString(R.string.uploading_wait))
                     return
                 }
                 openApiDialog(vd)

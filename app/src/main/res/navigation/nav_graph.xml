@@ -37,10 +37,6 @@
         android:name="io.github.nic562.screen.recorder.ApiFormFragment"
         android:label="@string/api_form_fragment_label"
         tools:layout="@layout/fragment_api_form">
-
-        <action
-            android:id="@+id/action_apiFormFragment_to_apiManagerFragment"
-            app:destination="@id/apiManagerFragment" />
         <argument
             android:name="id"
             android:defaultValue="-1L"
@@ -50,9 +46,22 @@
         android:id="@+id/videoManagerFragment"
         android:name="io.github.nic562.screen.recorder.VideoManagerFragment"
         android:label="@string/video_manager_fragment_label"
-        tools:layout="@layout/fragment_video_manager" />
+        tools:layout="@layout/fragment_video_manager">
+        <action
+            android:id="@+id/action_videoManagerFragment_to_logFragment"
+            app:destination="@id/logFragment" />
+    </fragment>
     <fragment
         android:id="@+id/settingsFragment"
         android:name="io.github.nic562.screen.recorder.SettingsFragment"
         android:label="@string/action_settings" />
+    <fragment
+        android:id="@+id/logFragment"
+        android:name="io.github.nic562.screen.recorder.LogFragment"
+        android:label="@string/upload_log"
+        tools:layout="@layout/fragment_log">
+        <argument
+            android:name="log"
+            app:argType="string" />
+    </fragment>
 </navigation>

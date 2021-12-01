@@ -217,6 +217,7 @@ object Http {
 
     interface ReadFileProgress {
         fun progress(total: Long, p: Long)
+        fun keepWorking(): Boolean
     }
 
     private const val end = "\r\n"
@@ -243,6 +244,9 @@ object Http {
                 var len: Int
                 var sum = 0L
                 while (it.read(bf).apply { len = this } != -1) {
+                    if (progressListener?.keepWorking() == false) {
+                        throw InterruptedIOException("Writing file io is interrupted!")
+                    }
                     sum += len
                     write(bf, 0, len)
                     progressListener?.progress(total, sum)
@@ -259,6 +263,8 @@ object Http {
             currentFileTotal: Long,
             currentFileP: Long
         )
+
+        fun keepWorking(): Boolean
     }
 
     fun upload(
@@ -269,7 +275,8 @@ object Http {
         args: TreeMap<String, String>? = null,
         headers: HashMap<String, String>? = null,
         timeout: Int = 60000,
-        progressListener: ReadFilesProgress? = null
+        progressListener: ReadFilesProgress? = null,
+        encoding: Boolean = true
     ): String {
         if (files.isEmpty()) {
             throw Exception("No file will be upload! Please check `files` arguments.")
@@ -289,7 +296,10 @@ object Http {
                             writeSplit(it)
                             it.writeBytes("Content-Disposition: form-data; name=\"$k\"")
                             it.writeBytes(end2)
-                            it.writeBytes(URLEncoder.encode(args[k], "UTF8"))
+                            if (encoding)
+                                it.writeBytes(URLEncoder.encode(args[k], "UTF8"))
+                            else
+                                it.writeBytes(args[k])
                             it.writeBytes(end)
                         }
                     for (idx in files.indices) {
@@ -297,6 +307,10 @@ object Http {
                         val pl = if (progressListener == null) null else object : ReadFileProgress {
                             override fun progress(total: Long, p: Long) {
                                 progressListener.progress(files.count(), idx, total, p)
+                            }
+
+                            override fun keepWorking(): Boolean {
+                                return progressListener.keepWorking()
                             }
                         }
                         writeFileToDataOutputStream(f, fileArgumentName, fileContentType, it, pl)

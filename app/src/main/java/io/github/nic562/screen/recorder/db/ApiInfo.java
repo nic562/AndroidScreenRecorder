@@ -54,12 +54,14 @@ public class ApiInfo {
 
     private String body;
 
+    private Boolean isBodyEncoding;
+
     @NotNull
     private String uploadFileArgName;
 
-    @Generated(hash = 1015012581)
+    @Generated(hash = 689619700)
     public ApiInfo(Long id, @NotNull String title, @NotNull String url,
-                   @NotNull Method method, String header, String body,
+                   @NotNull Method method, String header, String body, Boolean isBodyEncoding,
                    @NotNull String uploadFileArgName) {
         this.id = id;
         this.title = title;
@@ -67,6 +69,7 @@ public class ApiInfo {
         this.method = method;
         this.header = header;
         this.body = body;
+        this.isBodyEncoding = isBodyEncoding;
         this.uploadFileArgName = uploadFileArgName;
     }
 
@@ -128,5 +131,13 @@ public class ApiInfo {
 
     public void setUploadFileArgName(String uploadFileArgName) {
         this.uploadFileArgName = uploadFileArgName;
+    }
+
+    public Boolean getIsBodyEncoding() {
+        return this.isBodyEncoding;
+    }
+
+    public void setIsBodyEncoding(Boolean isBodyEncoding) {
+        this.isBodyEncoding = isBodyEncoding;
     }
 }

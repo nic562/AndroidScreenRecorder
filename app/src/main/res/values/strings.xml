@@ -34,10 +34,17 @@
     <string name="confirm2delete_video">是否确认要删除该记录？</string>
     <string name="no_api">当前未定义任何接口</string>
     <string name="select_an_upload_api">请选择一个上传接口</string>
-    <string name="already_uploading">正在上传中，请稍后&#8230;</string>
+    <string name="uploading_video">录屏上传中</string>
+    <string name="uploading_wait">正在上传中，请稍后&#8230;</string>
     <string name="auto_upload">自动上传</string>
     <string name="auto_upload_description">完成录屏后，根据默认接口自动上传录屏视频</string>
     <string name="auto_delete">视频自动删除</string>
     <string name="auto_delete_description">完成上传后自动删除录屏视频记录</string>
+    <string name="upload_log">上传日志</string>
+    <string name="upload_args_encoding">是否编码请求参数</string>
+    <string name="upload_args_encoding_description">用URLEncode的方式编码请求体中的参数值</string>
+    <string name="upload_finish">完成上传</string>
+    <string name="upload_wait">等待上传</string>
+    <string name="upload_cancel">上传取消了</string>
 
 </resources>
