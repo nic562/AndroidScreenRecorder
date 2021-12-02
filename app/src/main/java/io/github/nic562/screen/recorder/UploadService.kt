@@ -298,6 +298,10 @@ class UploadService : Service() {
         }
     }
 
+    private fun sizeBytes2Mb(sizeBytes: Long): String {
+        return "%.2fMB".format(sizeBytes.toDouble() / 1024 / 1024)
+    }
+
     private fun initThread(): MyThread {
         return MyThread(
             resources,
@@ -313,7 +317,7 @@ class UploadService : Service() {
                     val ps = (currentFileP.toDouble() / currentFileTotal * 100).roundToInt()
                     sendNotification(
                         videoID,
-                        "${ps}% ... [${currentFileP}/${currentFileTotal}]",
+                        "[${sizeBytes2Mb(currentFileP)}/${sizeBytes2Mb(currentFileTotal)}] ... ${ps}%",
                         ps
                     )
                     notifyUi("progress", videoID, Bundle().apply {
@@ -335,6 +339,10 @@ class UploadService : Service() {
 
                 override fun onUploadFinish(videoID: Long, result: String) {
                     closeNotification(videoID)
+                    if (Config.getAutoDelete()) // 自动删除
+                        getDB().videoInfoDao.apply {
+                            load(videoID).destroy(this)
+                        }
                     notifyUi("finish", videoID, Bundle().apply {
                         putString("result", result)
                     })

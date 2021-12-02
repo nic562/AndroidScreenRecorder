@@ -18,6 +18,7 @@
     <string name="sure">确定</string>
     <string name="cancel">取消</string>
     <string name="recording_num">录屏中(%ds)&#8230;点击通知停止录屏</string>
+    <string name="record_finished_need_to_upload">录屏已经完成，请点击这里进行上传</string>
     <string name="add">新增</string>
     <string name="submit">保存</string>
     <string name="delete">删除</string>
@@ -46,5 +47,8 @@
     <string name="upload_finish">完成上传</string>
     <string name="upload_wait">等待上传</string>
     <string name="upload_cancel">上传取消了</string>
+    <string name="auto_stop">自动停止</string>
+    <string name="auto_stop_record">自动停止录屏</string>
+    <string name="count_down_seconds">倒计时秒数</string>
 
 </resources>

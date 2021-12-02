@@ -8,6 +8,9 @@ import io.github.nic562.screen.recorder.db.dao.DaoMaster
 import io.github.nic562.screen.recorder.db.dao.DaoSession
 
 class App : Application() {
+    var isActivityVisible = true
+    private set
+
     private val daoSession: DaoSession by lazy {
         val helper =
             if (BuildConfig.DEBUG)
@@ -30,4 +33,13 @@ class App : Application() {
     fun getDB(): DaoSession {
         return daoSession
     }
+
+    fun onResume() {
+        isActivityVisible = true
+    }
+
+    fun onPause() {
+        isActivityVisible = false
+    }
+
 }

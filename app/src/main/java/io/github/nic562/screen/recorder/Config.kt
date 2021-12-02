@@ -20,4 +20,12 @@ object Config {
     fun getAutoDelete(): Boolean {
         return preference.getBoolean("auto_delete", false)
     }
+
+    fun getAutoStopRecord(): Boolean {
+        return preference.getBoolean("auto_stop_record", false)
+    }
+
+    fun getRecordCountDownSeconds(): Int {
+        return preference.getInt("record_count_down_second", 3)
+    }
 }

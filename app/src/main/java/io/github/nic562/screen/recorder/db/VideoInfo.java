@@ -5,9 +5,12 @@ import org.greenrobot.greendao.annotation.Id;
 import org.greenrobot.greendao.annotation.Index;
 import org.greenrobot.greendao.annotation.NotNull;
 
+import java.io.File;
 import java.util.Date;
 
 import org.greenrobot.greendao.annotation.Generated;
+
+import io.github.nic562.screen.recorder.db.dao.VideoInfoDao;
 
 @Entity(indexes = {
         @Index(value = "createTime", unique = true)
@@ -67,5 +70,17 @@ public class VideoInfo {
 
     public void setPreviewPath(String previewPath) {
         this.previewPath = previewPath;
+    }
+
+    public void destroy(VideoInfoDao dao) {
+        File fv = new File(filePath);
+        if (fv.exists()) {
+            fv.delete();
+        }
+        File fi = new File(previewPath);
+        if (fi.exists()) {
+            fi.delete();
+        }
+        dao.delete(this);
     }
 }

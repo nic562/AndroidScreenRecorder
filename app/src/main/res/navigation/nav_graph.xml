@@ -19,7 +19,9 @@
         <action
             android:id="@+id/action_mainFragment_to_settingsFragment"
             app:destination="@id/settingsFragment" />
-
+        <action
+            android:id="@+id/action_mainManagerFragment_to_logFragment"
+            app:destination="@id/logFragment" />
     </fragment>
 
     <fragment

@@ -15,4 +15,20 @@
         app:summary="@string/auto_delete_description"
         app:title="@string/auto_delete" />
 
+    <PreferenceCategory app:title="@string/auto_stop">
+        <SwitchPreferenceCompat
+            app:defaultValue="false"
+            app:icon="@drawable/ic_baseline_app_blocking_24"
+            app:key="auto_stop_record"
+            app:title="@string/auto_stop_record" />
+        <SeekBarPreference
+            android:max="60"
+            app:defaultValue="3"
+            app:dependency="auto_stop_record"
+            app:icon="@drawable/ic_baseline_timer_24"
+            app:key="record_count_down_second"
+            app:showSeekBarValue="true"
+            app:title="@string/count_down_seconds" />
+    </PreferenceCategory>
+
 </PreferenceScreen>

@@ -53,8 +53,13 @@ class VideoManagerFragment : BaseFragment(), View.OnClickListener {
                 }
                 "finish" -> {
                     id?.let {
-                        uploadStatus[it] = -2
-                        notifyVideoItemChangedByID(it)
+                        if (Config.getAutoDelete()) {
+                            uploadStatus.remove(it)
+                            notifyVideoItemRemoveByID(it)
+                        } else {
+                            uploadStatus[it] = -2
+                            notifyVideoItemChangedByID(it)
+                        }
                     }
                 }
                 "error" -> {
@@ -166,7 +171,7 @@ class VideoManagerFragment : BaseFragment(), View.OnClickListener {
                     onErrorImgID = R.drawable.ic_baseline_broken_image_24
                 )
                 it.ivUpload.tag = d
-                it.ivDelete.tag = d.id
+                it.ivDelete.tag = position
                 val p = upStatus[d.id]
                 it.tvUploadStatus.text = null
                 if (p == null) {
@@ -203,7 +208,7 @@ class VideoManagerFragment : BaseFragment(), View.OnClickListener {
 
     override fun onClick(v: View?) {
         when (v?.id) {
-            R.id.root -> {
+            binding.root.id -> {
                 val fp = v.tag as String
                 val uri = FileProvider.getUriForFile(
                     requireContext(),
@@ -230,17 +235,12 @@ class VideoManagerFragment : BaseFragment(), View.OnClickListener {
                     R.string.confirm2delete_video,
                     Snackbar.LENGTH_LONG
                 ).setAction(R.string.sure) {
-                    val id = v.tag as Long
-                    for (p in 0 until videoList.size) {
-                        val d = videoList[p]
-                        if (d.id == id) {
-                            File(d.filePath).delete()
-                            File(d.previewPath).delete()
-                            getDB().videoInfoDao.delete(d)
-                            videoList.removeAt(p)
-                            adapter.notifyItemRemoved(p)
-                        }
-                    }
+                    val p = v.tag as Int
+                    val d = videoList[p]
+                    d.destroy(getDB().videoInfoDao)
+                    videoList.removeAt(p)
+                    adapter.notifyItemRemoved(p)
+                    adapter.notifyItemRangeChanged(p, videoList.size - p)
                 }.show()
             }
         }
@@ -279,6 +279,16 @@ class VideoManagerFragment : BaseFragment(), View.OnClickListener {
         findVideoIndexByID(id).let { idx ->
             if (idx >= 0) {
                 adapter.notifyItemChanged(idx)
+            }
+        }
+    }
+
+    private fun notifyVideoItemRemoveByID(id: Long) {
+        findVideoIndexByID(id).let { idx ->
+            if (idx >= 0) {
+                videoList.removeAt(idx)
+                adapter.notifyItemRemoved(idx)
+                adapter.notifyItemRangeChanged(idx, videoList.size - idx)
             }
         }
     }

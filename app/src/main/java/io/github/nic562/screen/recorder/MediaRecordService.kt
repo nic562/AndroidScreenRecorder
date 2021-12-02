@@ -1,5 +1,6 @@
 package io.github.nic562.screen.recorder
 
+import android.app.Notification
 import android.app.PendingIntent
 import android.app.Service
 import android.content.BroadcastReceiver
@@ -11,20 +12,22 @@ import android.hardware.display.VirtualDisplay
 import android.media.MediaRecorder
 import android.media.projection.MediaProjectionManager
 import android.os.Binder
+import android.os.Build
 import android.os.Handler
 import android.os.IBinder
+import android.util.Log
 import androidx.core.app.NotificationChannelCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import java.util.logging.Logger
+import io.github.nic562.screen.recorder.db.VideoInfo
+import io.github.nic562.screen.recorder.tools.Video
+import java.io.File
+import java.util.*
 
 class MediaRecordService : Service() {
     private val notificationChannel = "recordService"
     private val notificationID = 100
-
-    private val logger by lazy {
-        Logger.getLogger("MediaRecordService")
-    }
+    private val TAG = "MediaRecordService"
 
     private val notificationManager by lazy {
         NotificationManagerCompat.from(this)
@@ -40,11 +43,15 @@ class MediaRecordService : Service() {
     private var recordingDuration = 0
     private var currentDstFilePath: String? = null
     private val handler by lazy { Handler(mainLooper) }
+
+    private val stopRecordBroadcastIntent by lazy {
+        Intent(this, RecordNotificationReceiver::class.java)
+    }
     private val notificationOpenIntent by lazy {
         PendingIntent.getBroadcast(
             this,
             999,
-            Intent(this, RecordNotificationReceiver::class.java),
+            stopRecordBroadcastIntent,
             PendingIntent.FLAG_UPDATE_CURRENT
         )
     }
@@ -70,7 +77,7 @@ class MediaRecordService : Service() {
                     }
                 }
                 else -> {
-                    logger.warning("unKnow broadcastReceiver action: ${intent?.action}")
+                    Log.w(TAG, "unKnow broadcastReceiver action: ${intent?.action}")
                 }
             }
         }
@@ -79,7 +86,7 @@ class MediaRecordService : Service() {
     interface Callback {
         fun onRecordStart()
         fun onRecordError(e: Throwable)
-        fun onRecordStop(dstVideoPath: String?)
+        fun onRecordStop(videoID: Long?)
     }
 
     private var callback: Callback? = null
@@ -121,26 +128,26 @@ class MediaRecordService : Service() {
             val dstPath = getStringExtra("dstPath")
             val resultCode = getIntExtra("resultCode", -1)
             if (dstPath == null) {
-                logger.warning("dstPath must be assign!")
+                Log.w(TAG, "dstPath must be assign!")
                 return@apply
             }
             if (width < 1) {
-                logger.warning("width must > 0")
+                Log.w(TAG, "width must > 0")
                 return@apply
             }
             if (height < 1) {
-                logger.warning("height must > 0")
+                Log.w(TAG, "height must > 0")
                 return@apply
             }
             if (dpi < 1) {
-                logger.warning("dpi must > 0")
+                Log.w(TAG, "dpi must > 0")
                 return@apply
             }
-            logger.info("willing to record screen[$width x $height] with Dpi#$dpi into [${dstPath}]")
+            Log.i(TAG, "willing to record screen[$width x $height] with Dpi#$dpi into [${dstPath}]")
 
             val data = getParcelableExtra<Intent>("data")
             if (data == null) {
-                logger.warning("intent-data is Null!")
+                Log.w(TAG, "intent-data is Null!")
                 return@apply
             }
             try {
@@ -167,10 +174,17 @@ class MediaRecordService : Service() {
                 }
             } catch (e: Exception) {
                 callback?.onRecordError(e)
-                logger.severe("MediaRecorder start error: $e")
+                Log.e(TAG, "MediaRecorder start error: ", e)
+                e.printStackTrace()
             }
         }
         return super.onStartCommand(intent, flags, startId)
+    }
+
+    override fun onDestroy() {
+        unregisterReceiver(broadcastReceiver)
+        stop()
+        super.onDestroy()
     }
 
     private fun startNotification() {
@@ -189,15 +203,36 @@ class MediaRecordService : Service() {
                     return@postDelayed
                 }
                 recordingDuration += 1
-                notificationManager.notify(
-                    notificationID,
-                    notificationBuilder.setContentText(
-                        getString(R.string.recording_num, recordingDuration)
-                    ).build()
-                )
+                notify(getString(R.string.recording_num, recordingDuration))
+                if (Config.getAutoStopRecord() && recordingDuration >= Config.getRecordCountDownSeconds()) {
+                    when {
+                        (application as App).isActivityVisible -> {
+                            stop()
+                        }
+                        Build.VERSION.SDK_INT < Build.VERSION_CODES.Q -> {
+                            startActivity(
+                                RecordNotificationReceiver.makeCallUpAppAndStopRecordIntent(
+                                    this
+                                )
+                            )
+                        }
+                        else -> {
+                            notify(getString(R.string.record_finished_need_to_upload))
+                        }
+                    }
+                    return@postDelayed
+                }
                 updateNotification()
             }, 1000)
         }
+    }
+
+    private fun notify(msg: String) {
+        notify(notificationBuilder.setContentText(msg).build())
+    }
+
+    private fun notify(n: Notification) {
+        notificationManager.notify(notificationID, n)
     }
 
     private fun closeNotification() {
@@ -228,6 +263,10 @@ class MediaRecordService : Service() {
         this.callback = callback
     }
 
+    fun removeCallback() {
+        this.callback = null
+    }
+
     fun isNotificationEnable(): Boolean {
         return notificationManager.areNotificationsEnabled()
     }
@@ -235,18 +274,6 @@ class MediaRecordService : Service() {
     fun isRecording(): Boolean {
         return isRecording
     }
-
-//    fun pause() {
-//        recorder?.let {
-//            it.pause()
-//        }
-//    }
-//
-//    fun resume() {
-//        recorder?.let {
-//            it.resume()
-//        }
-//    }
 
     fun stop() {
         isRecording = false
@@ -259,17 +286,37 @@ class MediaRecordService : Service() {
                 it.reset()
                 it.release()
             } catch (e: Exception) {
-                logger.warning("stop recorder error: $e")
+                Log.w(TAG, "stop recorder error:", e)
             }
         }
         closeNotification()
-        callback?.onRecordStop(currentDstFilePath)
+        currentDstFilePath?.let {
+            val img = File(
+                getExternalFilesDir("img"),
+                "${System.currentTimeMillis()}.jpg"
+            )
+            val pv: File = try {
+                Video.getThumb2File(it, img.absolutePath)
+                    ?: throw java.lang.Exception("[${it}] is an invalid video file? Get thumb Error")
+            } catch (e: java.lang.Exception) {
+                Log.w(this.javaClass.simpleName, e)
+                callback?.onRecordError(e)
+                return@let
+            }
+            VideoInfo().apply {
+                createTime = Date()
+                filePath = it
+                previewPath = pv.absolutePath
+                getApp().getDB().videoInfoDao.insert(this)
+                getApp().getDB().videoInfoDao.detachAll()
+                callback?.onRecordStop(this.id)
+            }
+            currentDstFilePath = null
+        }
+        callback?.onRecordStop(null)
     }
 
-    override fun onDestroy() {
-        unregisterReceiver(broadcastReceiver)
-        stop()
-        super.onDestroy()
+    private fun getApp(): App {
+        return (application as App)
     }
-
 }

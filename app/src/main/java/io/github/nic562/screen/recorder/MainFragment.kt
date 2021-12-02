@@ -1,14 +1,13 @@
 package io.github.nic562.screen.recorder
 
 import android.Manifest
-import android.content.ComponentName
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.content.ServiceConnection
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.media.projection.MediaProjectionManager
 import android.os.Bundle
-import android.os.IBinder
 import android.provider.Settings
 import android.view.*
 import androidx.appcompat.app.AppCompatActivity
@@ -16,11 +15,6 @@ import androidx.navigation.fragment.findNavController
 import com.google.android.material.snackbar.Snackbar
 import io.github.nic562.screen.recorder.base.BaseFragment
 import io.github.nic562.screen.recorder.databinding.FragmentMainBinding
-import io.github.nic562.screen.recorder.db.VideoInfo
-import io.github.nic562.screen.recorder.tools.Video
-import java.io.File
-import java.lang.Exception
-import java.util.*
 
 /**
  * Created by Nic on 2021/11/27.
@@ -32,74 +26,32 @@ class MainFragment : BaseFragment(), View.OnClickListener {
     private val reqCodeNotificationSetting = 201
     private val reqCodePermission = 301
 
-    private val dm by lazy {
-        resources.displayMetrics
-    }
-
     private val mediaProjectionManager: MediaProjectionManager by lazy {
         requireContext().getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
     }
 
-    private var sv: MediaRecordService? = null
-    private val svCallback = object : MediaRecordService.Callback {
-        override fun onRecordStart() {
-            binding.btnRecordStart.visibility = View.GONE
-            binding.btnRecordStop.visibility = View.VISIBLE
-        }
-
-        override fun onRecordError(e: Throwable) {
-            Snackbar.make(
-                binding.root,
-                e.localizedMessage ?: e.message ?: e.toString(),
-                Snackbar.LENGTH_LONG
-            ).show()
-        }
-
-        override fun onRecordStop(dstVideoPath: String?) {
-            binding.btnRecordStop.visibility = View.GONE
-            binding.btnRecordStart.visibility = View.VISIBLE
-            dstVideoPath?.let {
-                val img = File(
-                    requireActivity().getExternalFilesDir("img"),
-                    "${System.currentTimeMillis()}.jpg"
-                )
-                val pv: File? = try {
-                    Video.getThumb2File(dstVideoPath, img.absolutePath)
-                        ?: throw Exception("return null File")
-                } catch (e: Exception) {
-                    logger.severe("[${dstVideoPath}] is an invalid video file? Get thumb Error: $e")
-                    null
+    private val uploadStatusBroadcastReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            when (val act = intent?.getStringExtra("action")) {
+                "start" -> {
+                    toast(getString(R.string.upload_wait))
                 }
-                pv?.let { previewFile ->
-                    VideoInfo().apply {
-                        createTime = Date()
-                        filePath = it
-                        previewPath = previewFile.absolutePath
-                        getDB().videoInfoDao.insert(this)
+                "progress" -> {
+                }
+                "finish" -> {
+                }
+                "error" -> {
+                    intent.getStringExtra("error")?.let {
+                        findNavController().navigate(
+                            R.id.action_mainManagerFragment_to_logFragment,
+                            Bundle().apply {
+                                putString("log", it)
+                            })
                     }
                 }
-
-            }
-        }
-
-    }
-
-    private val svIntent by lazy {
-        Intent(requireContext(), MediaRecordService::class.java)
-    }
-
-    private val svConn by lazy {
-        object : ServiceConnection {
-            override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
-                sv = (service as MediaRecordService.SvBinder).getService().apply {
-                    setCallback(svCallback)
-                    checkRecorderStatus()
+                else -> {
+                    logger.warning("unKnow broadcastReceiver action: $act")
                 }
-            }
-
-            override fun onServiceDisconnected(name: ComponentName?) {
-                sv?.stop()
-                sv = null
             }
         }
     }
@@ -120,9 +72,16 @@ class MainFragment : BaseFragment(), View.OnClickListener {
             it.btnRecordStop.setOnClickListener(this)
             it.btnVideo.setOnClickListener(this)
             it.btnUploadApi.setOnClickListener(this)
+            getMainActivity().recordStatusViewModel.recordingEvent.observe(viewLifecycleOwner, { recording ->
+                if (recording) {
+                    it.btnRecordStart.visibility = View.GONE
+                    it.btnRecordStop.visibility = View.VISIBLE
+                } else {
+                    it.btnRecordStart.visibility = View.VISIBLE
+                    it.btnRecordStop.visibility = View.GONE
+                }
+            })
         }
-
-        requireActivity().bindService(svIntent, svConn, Context.BIND_AUTO_CREATE)
     }
 
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
@@ -140,19 +99,22 @@ class MainFragment : BaseFragment(), View.OnClickListener {
         }
     }
 
-    override fun onStart() {
-        super.onStart()
-        checkRecorderStatus()
+    override fun onResume() {
+        super.onResume()
+        IntentFilter().apply {
+            addAction(getString(R.string.broadcast_receiver_action_upload_manager))
+            requireActivity().registerReceiver(uploadStatusBroadcastReceiver, this)
+        }
+    }
+
+    override fun onPause() {
+        requireActivity().unregisterReceiver(uploadStatusBroadcastReceiver)
+        super.onPause()
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
-    }
-
-    override fun onDestroy() {
-        requireActivity().unbindService(svConn)
-        super.onDestroy()
     }
 
     override fun onClick(v: View?) {
@@ -172,7 +134,7 @@ class MainFragment : BaseFragment(), View.OnClickListener {
                     )
                     return
                 }
-                if (sv?.isNotificationEnable() == false) {
+                if (getRecordService()?.isNotificationEnable() == false) {
                     Snackbar.make(
                         binding.root,
                         R.string.confirm2enable_notification,
@@ -201,7 +163,7 @@ class MainFragment : BaseFragment(), View.OnClickListener {
                 }
             }
             R.id.btn_record_stop -> {
-                sv?.stop()
+                getRecordService()?.stop()
             }
             R.id.btn_upload_api -> {
                 findNavController().navigate(
@@ -224,19 +186,7 @@ class MainFragment : BaseFragment(), View.OnClickListener {
             reqCodeScreenRecord -> {
                 if (resultCode == AppCompatActivity.RESULT_OK) {
                     data?.let {
-                        val file = File(
-                            requireActivity().getExternalFilesDir("screen"),
-                            "${System.currentTimeMillis()}.mp4"
-                        )
-                        svIntent.apply {
-                            putExtra("width", dm.widthPixels)
-                            putExtra("height", dm.heightPixels)
-                            putExtra("dpi", dm.densityDpi)
-                            putExtra("dstPath", file.absolutePath)
-                            putExtra("resultCode", resultCode)
-                            putExtra("data", it)
-                            requireActivity().startForegroundService(this)
-                        }
+                        getMainActivity().startRecordService(it)
                     }
                 }
             }
@@ -267,16 +217,18 @@ class MainFragment : BaseFragment(), View.OnClickListener {
         }
     }
 
-    private fun checkRecorderStatus() {
-        if (sv?.isRecording() == true) {
-            svCallback.onRecordStart()
-        } else {
-            svCallback.onRecordStop(null)
-        }
+    private fun requestRecording() {
+        startActivityForResult(
+            mediaProjectionManager.createScreenCaptureIntent(),
+            reqCodeScreenRecord
+        )
     }
 
-    private fun requestRecording() {
-        val intent = mediaProjectionManager.createScreenCaptureIntent()
-        startActivityForResult(intent, reqCodeScreenRecord)
+    private fun getMainActivity(): MainActivity {
+        return (requireActivity() as MainActivity)
+    }
+
+    private fun getRecordService(): MediaRecordService? {
+        return getMainActivity().getRecordService()
     }
 }
