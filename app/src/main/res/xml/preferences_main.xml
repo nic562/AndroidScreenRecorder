@@ -15,7 +15,13 @@
         app:summary="@string/auto_delete_description"
         app:title="@string/auto_delete" />
 
-    <PreferenceCategory app:title="@string/auto_stop">
+    <PreferenceCategory app:title="@string/auto">
+        <SwitchPreferenceCompat
+            app:defaultValue="false"
+            app:icon="@drawable/ic_baseline_flip_to_back_24"
+            app:key="auto_2back"
+            app:summary="@string/auto_2back_description"
+            app:title="@string/auto_2back" />
         <SwitchPreferenceCompat
             app:defaultValue="false"
             app:icon="@drawable/ic_baseline_app_blocking_24"

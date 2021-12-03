@@ -6,11 +6,9 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
-import android.media.projection.MediaProjectionManager
 import android.os.Bundle
 import android.provider.Settings
 import android.view.*
-import androidx.appcompat.app.AppCompatActivity
 import androidx.navigation.fragment.findNavController
 import com.google.android.material.snackbar.Snackbar
 import io.github.nic562.screen.recorder.base.BaseFragment
@@ -22,13 +20,9 @@ import io.github.nic562.screen.recorder.databinding.FragmentMainBinding
 class MainFragment : BaseFragment(), View.OnClickListener {
     private var _binding: FragmentMainBinding? = null
     private val binding get() = _binding!!
-    private val reqCodeScreenRecord = 101
+    private val reqCodeAccessibility = 101
     private val reqCodeNotificationSetting = 201
     private val reqCodePermission = 301
-
-    private val mediaProjectionManager: MediaProjectionManager by lazy {
-        requireContext().getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-    }
 
     private val uploadStatusBroadcastReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -72,7 +66,8 @@ class MainFragment : BaseFragment(), View.OnClickListener {
             it.btnRecordStop.setOnClickListener(this)
             it.btnVideo.setOnClickListener(this)
             it.btnUploadApi.setOnClickListener(this)
-            getMainActivity().recordStatusViewModel.recordingEvent.observe(viewLifecycleOwner, { recording ->
+            it.btnAccessibility.setOnClickListener(this)
+            getMainActivity().recordStatusViewModel.recordingEvent.observe(viewLifecycleOwner) { recording ->
                 if (recording) {
                     it.btnRecordStart.visibility = View.GONE
                     it.btnRecordStop.visibility = View.VISIBLE
@@ -80,7 +75,7 @@ class MainFragment : BaseFragment(), View.OnClickListener {
                     it.btnRecordStart.visibility = View.VISIBLE
                     it.btnRecordStop.visibility = View.GONE
                 }
-            })
+            }
         }
     }
 
@@ -153,13 +148,13 @@ class MainFragment : BaseFragment(), View.OnClickListener {
                         override fun onDismissed(transientBottomBar: Snackbar?, event: Int) {
                             if (event != 1) {
                                 // 设置了1个Action的话，该Action占用的event为1. 则2为超时自动关闭
-                                requestRecording()
+                                getMainActivity().requestRecording()
                             }
                             super.onDismissed(transientBottomBar, event)
                         }
                     }).show()
                 } else {
-                    requestRecording()
+                    getMainActivity().requestRecording()
                 }
             }
             R.id.btn_record_stop -> {
@@ -175,20 +170,22 @@ class MainFragment : BaseFragment(), View.OnClickListener {
                     R.id.action_mainFragment_to_videoManagerFragment
                 )
             }
+            R.id.btn_accessibility -> {
+                startActivityForResult(
+                    Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS),
+                    reqCodeAccessibility
+                )
+            }
         }
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         when (requestCode) {
             reqCodeNotificationSetting -> {
-                requestRecording()
+                getMainActivity().requestRecording()
             }
-            reqCodeScreenRecord -> {
-                if (resultCode == AppCompatActivity.RESULT_OK) {
-                    data?.let {
-                        getMainActivity().startRecordService(it)
-                    }
-                }
+            reqCodeAccessibility -> {
+                getMainActivity().openAccessibilityService()
             }
         }
         super.onActivityResult(requestCode, resultCode, data)
@@ -215,13 +212,6 @@ class MainFragment : BaseFragment(), View.OnClickListener {
                 super.onRequestPermissionsResult(requestCode, permissions, grantResults)
             }
         }
-    }
-
-    private fun requestRecording() {
-        startActivityForResult(
-            mediaProjectionManager.createScreenCaptureIntent(),
-            reqCodeScreenRecord
-        )
     }
 
     private fun getMainActivity(): MainActivity {

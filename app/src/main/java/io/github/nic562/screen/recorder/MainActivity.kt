@@ -1,6 +1,7 @@
 package io.github.nic562.screen.recorder
 
 import android.content.*
+import android.media.projection.MediaProjectionManager
 import android.os.Bundle
 import android.os.IBinder
 import androidx.appcompat.app.AppCompatActivity
@@ -15,6 +16,7 @@ import java.io.File
 import java.util.*
 
 class MainActivity : AppCompatActivity() {
+    private val reqCodeScreenRecord = 101
 
     private lateinit var appBarConfiguration: AppBarConfiguration
     private lateinit var binding: ActivityMainBinding
@@ -24,6 +26,10 @@ class MainActivity : AppCompatActivity() {
     }
     private val navController by lazy {
         findNavController(R.id.nav_host_fragment_content_main)
+    }
+
+    private val mediaProjectionManager: MediaProjectionManager by lazy {
+        getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
     }
 
     val recordStatusViewModel: RecordStatusViewModel by lazy {
@@ -100,6 +106,8 @@ class MainActivity : AppCompatActivity() {
             sendBroadcast(Intent(getString(R.string.broadcast_receiver_action_media_record_service)).apply {
                 putExtra("action", "stopRecording")
             })
+        } else if (intent?.extras?.getBoolean("startRecord") == true) {
+            requestRecording()
         }
         super.onNewIntent(intent)
     }
@@ -124,11 +132,26 @@ class MainActivity : AppCompatActivity() {
         super.onDestroy()
     }
 
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        when (requestCode) {
+            reqCodeScreenRecord -> {
+                if (resultCode == RESULT_OK) {
+                    data?.let {
+                        startRecordService(it)
+                        if (Config.getAutoToBack())
+                            moveTaskToBack(true)
+                    }
+                }
+            }
+        }
+        super.onActivityResult(requestCode, resultCode, data)
+    }
+
     private fun getApp(): App {
         return application as App
     }
 
-    fun startRecordService(recordData: Intent) {
+    private fun startRecordService(recordData: Intent) {
         svIntent.apply {
             putExtra("width", dm.widthPixels)
             putExtra("height", dm.heightPixels)
@@ -145,7 +168,18 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    fun requestRecording() {
+        startActivityForResult(
+            mediaProjectionManager.createScreenCaptureIntent(),
+            reqCodeScreenRecord
+        )
+    }
+
     fun getRecordService(): MediaRecordService? {
         return sv
+    }
+
+    fun openAccessibilityService() {
+        startService(Intent(this, RecordAccessibilityService::class.java))
     }
 }
