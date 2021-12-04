@@ -87,6 +87,10 @@ class MainFragment : BaseFragment(), View.OnClickListener {
         }
     }
 
+    override fun onBackPressed(): Boolean {
+        return false
+    }
+
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
         super.onCreateOptionsMenu(menu, inflater)
         inflater.inflate(R.menu.menu_main, menu)

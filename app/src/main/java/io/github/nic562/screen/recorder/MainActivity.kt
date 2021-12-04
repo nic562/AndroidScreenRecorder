@@ -12,6 +12,7 @@ import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.navigateUp
 import androidx.navigation.ui.setupActionBarWithNavController
 import com.google.android.material.snackbar.Snackbar
+import io.github.nic562.screen.recorder.base.SomethingWithBackPressed
 import io.github.nic562.screen.recorder.databinding.ActivityMainBinding
 import java.io.File
 import java.util.*
@@ -112,7 +113,10 @@ class MainActivity : AppCompatActivity() {
                             ).show()
                         }
                         else -> {
-                            Log.w(tag,"unKnow broadcastReceiver action for [${accessBroadcastAction}]: $act")
+                            Log.w(
+                                tag,
+                                "unKnow broadcastReceiver action for [${accessBroadcastAction}]: $act"
+                            )
                         }
                     }
                 }
@@ -175,9 +179,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onBackPressed() {
-        if (sv?.isRecording() == true || isAccessibilityOpen) {
-            moveTaskToBack(true)
-            return
+        if (!isTopFragmentConsumeBackPress()) {
+            if (sv?.isRecording() == true || isAccessibilityOpen) {
+                moveTaskToBack(true)
+                return
+            }
         }
         super.onBackPressed()
     }
@@ -232,4 +238,13 @@ class MainActivity : AppCompatActivity() {
     fun openAccessibilityService() {
         startService(Intent(this, RecordAccessibilityService::class.java))
     }
+
+    private fun isTopFragmentConsumeBackPress() =
+        getTopFragment<SomethingWithBackPressed>()?.onBackPressed() == true
+
+    private inline fun <reified T> getTopFragment(): T? =
+        supportFragmentManager.fragments.firstOrNull()?.let {
+            it.childFragmentManager.fragments[0] as? T
+        }
+
 }

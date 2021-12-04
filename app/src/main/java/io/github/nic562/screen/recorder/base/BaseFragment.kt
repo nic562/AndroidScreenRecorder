@@ -10,7 +10,7 @@ import io.github.nic562.screen.recorder.R
 import io.github.nic562.screen.recorder.db.dao.DaoSession
 import java.util.logging.Logger
 
-abstract class BaseFragment : Fragment() {
+abstract class BaseFragment : Fragment(), SomethingWithBackPressed {
 
     protected class StringArrayAdapter(context: Context, array: ArrayList<String>) :
         ArrayAdapter<String>(context, R.layout.layout_popup_item, array)
