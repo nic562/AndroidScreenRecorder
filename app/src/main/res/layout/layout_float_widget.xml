@@ -11,11 +11,10 @@
         android:id="@+id/iv_record"
         android:layout_width="36dp"
         android:layout_height="36dp"
-        android:src="@drawable/ic_stat_record"
+        android:src="@drawable/ic_baseline_radio_button_checked_24"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:tint="@color/black" />
+        app:layout_constraintTop_toTopOf="parent" />
 
     <TextView
         android:id="@+id/tv_record"
@@ -24,7 +23,7 @@
         android:text="0"
         android:textAlignment="center"
         android:textColor="@color/white"
-        android:textSize="6sp"
+        android:textSize="8sp"
         app:layout_constraintBottom_toBottomOf="@id/iv_record"
         app:layout_constraintEnd_toEndOf="@id/iv_record"
         app:layout_constraintStart_toStartOf="@id/iv_record"

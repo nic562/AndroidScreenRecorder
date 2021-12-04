@@ -175,14 +175,14 @@ class UploadService : Service() {
                         progressListener = progressL,
                         encoding = api.isBodyEncoding
                     )
-                } catch (e: InterruptedIOException) {
+                } catch (e: Http.UploadInterruptedException) {
                     cancelOnce = false
                     if (callback == null) {
                         throw e
                     } else {
                         callback.onUploadError(
                             video.id,
-                            InterruptedIOException(resource.getString(R.string.upload_cancel))
+                            Http.UploadInterruptedException(resource.getString(R.string.upload_cancel))
                         )
                         null
                     }

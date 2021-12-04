@@ -225,6 +225,8 @@ object Http {
     private const val twoHyphens = "--"
     private const val boundary = "*****"
 
+    class UploadInterruptedException(msg: String): Exception(msg)
+
     private fun writeFileToDataOutputStream(
         file: File,
         fileArgumentName: String,
@@ -245,7 +247,7 @@ object Http {
                 var sum = 0L
                 while (it.read(bf).apply { len = this } != -1) {
                     if (progressListener?.keepWorking() == false) {
-                        throw InterruptedIOException("Writing file io is interrupted!")
+                        throw UploadInterruptedException("Uploading file's io is interrupted!")
                     }
                     sum += len
                     write(bf, 0, len)

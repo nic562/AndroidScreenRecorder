@@ -27,7 +27,7 @@ import java.util.*
 class MediaRecordService : Service() {
     private val notificationChannel = "recordService"
     private val notificationID = 100
-    private val TAG = "MediaRecordService"
+    private val tag = "MediaRecordService"
 
     private val notificationManager by lazy {
         NotificationManagerCompat.from(this)
@@ -66,10 +66,14 @@ class MediaRecordService : Service() {
         }
     }
 
+    private val broadcastAction by lazy {
+        getString(R.string.broadcast_receiver_action_media_record_service)
+    }
+
     private val broadcastReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             when (intent?.action) {
-                getString(R.string.broadcast_receiver_action_media_record_service) -> {
+                broadcastAction -> {
                     when (intent.getStringExtra("action")) {
                         "stopRecording" -> {
                             stop()
@@ -77,7 +81,7 @@ class MediaRecordService : Service() {
                     }
                 }
                 else -> {
-                    Log.w(TAG, "unKnow broadcastReceiver action: ${intent?.action}")
+                    Log.w(tag, "unKnow broadcastReceiver action: ${intent?.action}")
                 }
             }
         }
@@ -105,7 +109,7 @@ class MediaRecordService : Service() {
                 notificationManager.createNotificationChannel(this)
             }
         IntentFilter().apply {
-            addAction(getString(R.string.broadcast_receiver_action_media_record_service))
+            addAction(broadcastAction)
             registerReceiver(broadcastReceiver, this)
         }
     }
@@ -128,26 +132,26 @@ class MediaRecordService : Service() {
             val dstPath = getStringExtra("dstPath")
             val resultCode = getIntExtra("resultCode", -1)
             if (dstPath == null) {
-                Log.w(TAG, "dstPath must be assign!")
+                Log.w(tag, "dstPath must be assign!")
                 return@apply
             }
             if (width < 1) {
-                Log.w(TAG, "width must > 0")
+                Log.w(tag, "width must > 0")
                 return@apply
             }
             if (height < 1) {
-                Log.w(TAG, "height must > 0")
+                Log.w(tag, "height must > 0")
                 return@apply
             }
             if (dpi < 1) {
-                Log.w(TAG, "dpi must > 0")
+                Log.w(tag, "dpi must > 0")
                 return@apply
             }
-            Log.i(TAG, "willing to record screen[$width x $height] with Dpi#$dpi into [${dstPath}]")
+            Log.i(tag, "willing to record screen[$width x $height] with Dpi#$dpi into [${dstPath}]")
 
             val data = getParcelableExtra<Intent>("data")
             if (data == null) {
-                Log.w(TAG, "intent-data is Null!")
+                Log.w(tag, "intent-data is Null!")
                 return@apply
             }
             try {
@@ -174,7 +178,7 @@ class MediaRecordService : Service() {
                 }
             } catch (e: Exception) {
                 callback?.onRecordError(e)
-                Log.e(TAG, "MediaRecorder start error: ", e)
+                Log.e(tag, "MediaRecorder start error: ", e)
                 e.printStackTrace()
             }
         }
@@ -187,6 +191,13 @@ class MediaRecordService : Service() {
         super.onDestroy()
     }
 
+    private fun sendBroadcastRecordDuration(duration: Int) {
+        sendBroadcast(Intent(broadcastAction).apply {
+            putExtra("action", "duration")
+            putExtra("duration", duration)
+        })
+    }
+
     private fun startNotification() {
         startForeground(
             notificationID,
@@ -194,6 +205,7 @@ class MediaRecordService : Service() {
                 .setContentText(getString(R.string.recording_num, 0))
                 .build()
         )
+        sendBroadcastRecordDuration(0)
     }
 
     private fun updateNotification() {
@@ -204,6 +216,7 @@ class MediaRecordService : Service() {
                 }
                 recordingDuration += 1
                 notify(getString(R.string.recording_num, recordingDuration))
+                sendBroadcastRecordDuration(recordingDuration)
                 if (Config.getAutoStopRecord() && recordingDuration >= Config.getRecordCountDownSeconds()) {
                     when {
                         (application as App).isActivityVisible -> {
@@ -286,7 +299,7 @@ class MediaRecordService : Service() {
                 it.reset()
                 it.release()
             } catch (e: Exception) {
-                Log.w(TAG, "stop recorder error:", e)
+                Log.w(tag, "stop recorder error:", e)
             }
         }
         closeNotification()
@@ -313,6 +326,9 @@ class MediaRecordService : Service() {
             }
             currentDstFilePath = null
         }
+        sendBroadcast(Intent(broadcastAction).apply {
+            putExtra("action", "finish")
+        })
         callback?.onRecordStop(null)
     }
 

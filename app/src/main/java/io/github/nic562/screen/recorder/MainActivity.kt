@@ -4,6 +4,7 @@ import android.content.*
 import android.media.projection.MediaProjectionManager
 import android.os.Bundle
 import android.os.IBinder
+import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.findNavController
@@ -16,6 +17,9 @@ import java.io.File
 import java.util.*
 
 class MainActivity : AppCompatActivity() {
+    private val tag by lazy {
+        this.javaClass.name
+    }
     private val reqCodeScreenRecord = 101
 
     private lateinit var appBarConfiguration: AppBarConfiguration
@@ -87,6 +91,35 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private val accessBroadcastAction by lazy {
+        getString(R.string.broadcast_receiver_action_record_accessibility_service)
+    }
+    private var isAccessibilityOpen = false
+    private val broadcastReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            when (intent?.action) {
+                accessBroadcastAction -> {
+                    when (val act = intent.getStringExtra("action")) {
+                        "create" -> {
+                            isAccessibilityOpen = true
+                        }
+                        "error" -> {
+                            isAccessibilityOpen = false
+                            Snackbar.make(
+                                binding.root,
+                                R.string.failed_to_create_widgets,
+                                Snackbar.LENGTH_LONG
+                            ).show()
+                        }
+                        else -> {
+                            Log.w(tag,"unKnow broadcastReceiver action for [${accessBroadcastAction}]: $act")
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -99,6 +132,11 @@ class MainActivity : AppCompatActivity() {
         setupActionBarWithNavController(navController, appBarConfiguration)
 
         bindService(svIntent, svConn, Context.BIND_AUTO_CREATE)
+
+        IntentFilter().apply {
+            addAction(accessBroadcastAction)
+            registerReceiver(broadcastReceiver, this)
+        }
     }
 
     override fun onNewIntent(intent: Intent?) {
@@ -107,6 +145,9 @@ class MainActivity : AppCompatActivity() {
                 putExtra("action", "stopRecording")
             })
         } else if (intent?.extras?.getBoolean("startRecord") == true) {
+            if (sv?.isRecording() == true) {
+                return
+            }
             requestRecording()
         }
         super.onNewIntent(intent)
@@ -128,8 +169,17 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        unregisterReceiver(broadcastReceiver)
         unbindService(svConn)
         super.onDestroy()
+    }
+
+    override fun onBackPressed() {
+        if (sv?.isRecording() == true || isAccessibilityOpen) {
+            moveTaskToBack(true)
+            return
+        }
+        super.onBackPressed()
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {

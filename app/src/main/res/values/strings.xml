@@ -55,5 +55,6 @@
     <string name="auto">自动化</string>
     <string name="auto_2back">自动切换到后台</string>
     <string name="auto_2back_description">开启录屏后自动切换到后台</string>
+    <string name="failed_to_create_widgets">辅助组件启动失败，请重新授权启动</string>
 
 </resources>

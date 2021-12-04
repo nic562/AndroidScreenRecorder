@@ -24,27 +24,35 @@ class MainFragment : BaseFragment(), View.OnClickListener {
     private val reqCodeNotificationSetting = 201
     private val reqCodePermission = 301
 
-    private val uploadStatusBroadcastReceiver = object : BroadcastReceiver() {
+    private val uploadBroadcastAction by lazy {
+        getString(R.string.broadcast_receiver_action_upload_manager)
+    }
+
+    private val broadcastReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            when (val act = intent?.getStringExtra("action")) {
-                "start" -> {
-                    toast(getString(R.string.upload_wait))
-                }
-                "progress" -> {
-                }
-                "finish" -> {
-                }
-                "error" -> {
-                    intent.getStringExtra("error")?.let {
-                        findNavController().navigate(
-                            R.id.action_mainManagerFragment_to_logFragment,
-                            Bundle().apply {
-                                putString("log", it)
-                            })
+            when (intent?.action) {
+                uploadBroadcastAction -> {
+                    when (val act = intent.getStringExtra("action")) {
+                        "start" -> {
+                            toast(getString(R.string.upload_wait))
+                        }
+                        "progress" -> {
+                        }
+                        "finish" -> {
+                        }
+                        "error" -> {
+                            intent.getStringExtra("error")?.let {
+                                findNavController().navigate(
+                                    R.id.action_mainManagerFragment_to_logFragment,
+                                    Bundle().apply {
+                                        putString("log", it)
+                                    })
+                            }
+                        }
+                        else -> {
+                            logger.warning("unKnow broadcastReceiver action for [${uploadBroadcastAction}]: $act")
+                        }
                     }
-                }
-                else -> {
-                    logger.warning("unKnow broadcastReceiver action: $act")
                 }
             }
         }
@@ -97,13 +105,13 @@ class MainFragment : BaseFragment(), View.OnClickListener {
     override fun onResume() {
         super.onResume()
         IntentFilter().apply {
-            addAction(getString(R.string.broadcast_receiver_action_upload_manager))
-            requireActivity().registerReceiver(uploadStatusBroadcastReceiver, this)
+            addAction(uploadBroadcastAction)
+            requireActivity().registerReceiver(broadcastReceiver, this)
         }
     }
 
     override fun onPause() {
-        requireActivity().unregisterReceiver(uploadStatusBroadcastReceiver)
+        requireActivity().unregisterReceiver(broadcastReceiver)
         super.onPause()
     }
 
