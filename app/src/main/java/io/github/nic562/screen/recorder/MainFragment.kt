@@ -43,7 +43,7 @@ class MainFragment : BaseFragment(), View.OnClickListener {
                         "error" -> {
                             intent.getStringExtra("error")?.let {
                                 findNavController().navigate(
-                                    R.id.action_mainManagerFragment_to_logFragment,
+                                    R.id.action_mainFragment_to_logFragment,
                                     Bundle().apply {
                                         putString("log", it)
                                     })
@@ -75,6 +75,7 @@ class MainFragment : BaseFragment(), View.OnClickListener {
             it.btnVideo.setOnClickListener(this)
             it.btnUploadApi.setOnClickListener(this)
             it.btnAccessibility.setOnClickListener(this)
+            it.btnNetTraffic.setOnClickListener(this)
             getMainActivity().recordStatusViewModel.recordingEvent.observe(viewLifecycleOwner) { recording ->
                 if (recording) {
                     it.btnRecordStart.visibility = View.GONE
@@ -186,6 +187,11 @@ class MainFragment : BaseFragment(), View.OnClickListener {
                 startActivityForResult(
                     Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS),
                     reqCodeAccessibility
+                )
+            }
+            R.id.btn_net_traffic -> {
+                findNavController().navigate(
+                    R.id.action_mainFragment_to_netTrafficFragment
                 )
             }
         }

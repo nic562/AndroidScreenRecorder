@@ -19,7 +19,6 @@ import io.github.nic562.screen.recorder.db.dao.DaoSession
 import io.github.nic562.screen.recorder.tools.DateUtil
 import io.github.nic562.screen.recorder.tools.Http
 import java.io.File
-import java.io.InterruptedIOException
 import java.util.*
 import java.util.logging.Logger
 import kotlin.collections.HashMap

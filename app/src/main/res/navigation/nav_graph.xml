@@ -20,8 +20,11 @@
             android:id="@+id/action_mainFragment_to_settingsFragment"
             app:destination="@id/settingsFragment" />
         <action
-            android:id="@+id/action_mainManagerFragment_to_logFragment"
+            android:id="@+id/action_mainFragment_to_logFragment"
             app:destination="@id/logFragment" />
+        <action
+            android:id="@+id/action_mainFragment_to_netTrafficFragment"
+            app:destination="@id/netTrafficFragment" />
     </fragment>
 
     <fragment
@@ -66,4 +69,11 @@
             android:name="log"
             app:argType="string" />
     </fragment>
+
+    <fragment
+        android:id="@+id/netTrafficFragment"
+        android:name="io.github.nic562.screen.recorder.NetTrafficFragment"
+        android:label="@string/net_traffic_statistics"
+        tools:layout="@layout/fragment_net_traffic"
+        />
 </navigation>

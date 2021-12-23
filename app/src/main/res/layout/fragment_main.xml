@@ -47,5 +47,12 @@
             android:layout_height="wrap_content"
             android:text="@string/accessibility_helper"
             app:icon="@drawable/ic_baseline_accessibility_new_24" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_net_traffic"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/net_traffic_statistics"
+            app:icon="@drawable/ic_baseline_import_export_24" />
     </LinearLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>

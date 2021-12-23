@@ -16,12 +16,15 @@ import io.github.nic562.screen.recorder.base.SomethingWithBackPressed
 import io.github.nic562.screen.recorder.databinding.ActivityMainBinding
 import java.io.File
 import java.util.*
+import kotlin.collections.HashMap
 
 class MainActivity : AppCompatActivity() {
     private val tag by lazy {
         this.javaClass.name
     }
     private val reqCodeScreenRecord = 101
+    private val reqCodeNetTrafficStatisticsVpn = 102
+    private val activityResultDataMap by lazy { HashMap<Int, Bundle>() }
 
     private lateinit var appBarConfiguration: AppBarConfiguration
     private lateinit var binding: ActivityMainBinding
@@ -199,6 +202,20 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
             }
+            reqCodeNetTrafficStatisticsVpn -> {
+                val bu: Bundle? = data?.extras ?: activityResultDataMap[requestCode]
+                if (resultCode == RESULT_OK) {
+                    bu?.let {
+                        val apps = it.getStringArrayList("apps")
+                        startService(
+                            Intent(
+                                this,
+                                NetTrafficStatisticsVpnService::class.java
+                            ).putExtras(it)
+                        )
+                    }
+                }
+            }
         }
         super.onActivityResult(requestCode, resultCode, data)
     }
@@ -247,4 +264,26 @@ class MainActivity : AppCompatActivity() {
             it.childFragmentManager.fragments[0] as? T
         }
 
+    fun openNetTrafficStatisticsVpnService(apps: List<String>?, bundle: Bundle? = null) {
+        NetTrafficStatisticsVpnService.getActivityIntentForPrepareVpn(this).apply {
+            val bu = Bundle()
+            if (apps != null)
+                bu.putStringArrayList("apps", ArrayList(apps))
+            if (bundle != null)
+                bu.putAll(bundle)
+            when (this) {
+                null -> {
+                    onActivityResult(
+                        reqCodeNetTrafficStatisticsVpn,
+                        RESULT_OK,
+                        Intent().putExtras(bu)
+                    )
+                }
+                else -> {
+                    activityResultDataMap[reqCodeNetTrafficStatisticsVpn] = bu
+                    startActivityForResult(this, reqCodeNetTrafficStatisticsVpn)
+                }
+            }
+        }
+    }
 }

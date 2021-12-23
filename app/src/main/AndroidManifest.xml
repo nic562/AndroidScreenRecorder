@@ -4,13 +4,15 @@
     package="io.github.nic562.screen.recorder">
 
     <uses-permission android:name="android.permission.VIBRATE" />
-    <uses-permission
-        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
-        tools:ignore="ScopedStorage" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!--    <uses-permission android:name="android.permission.RECORD_AUDIO" />-->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+
+    <!-- 读取第三方应用信息所需 -->
+    <uses-permission
+        android:name="android.permission.QUERY_ALL_PACKAGES"
+        tools:ignore="QueryAllPackagesPermission" />
 
     <application
         android:name=".App"
@@ -50,6 +52,7 @@
             android:process=":uploadService" />
         <service
             android:name=".RecordAccessibilityService"
+            android:exported="true"
             android:label="@string/accessibility_helper"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
             android:process=":accessService">
@@ -60,6 +63,21 @@
                 android:name="android.accessibilityservice"
                 android:resource="@xml/accessibilityservice" />
         </service>
+
+        <service
+            android:name=".NetTrafficStatisticsVpnService"
+            android:exported="true"
+            android:permission="android.permission.BIND_VPN_SERVICE"
+            android:process=":vpnService">
+            <intent-filter>
+                <action android:name="android.net.VpnService" />
+            </intent-filter>
+        </service>
+
+        <service
+            android:name=".NetTrafficStatisticsService"
+            android:foregroundServiceType="mediaProjection"
+            android:process=":netTraffic" />
 
     </application>
 

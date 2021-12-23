@@ -10,6 +10,7 @@
     <string name="broadcast_receiver_action_upload_service" translatable="false">io.github.nic562.screen.recorder.UploadService</string>
     <string name="broadcast_receiver_action_upload_manager" translatable="false">io.github.nic562.screen.recorder.VideoManager</string>
     <string name="broadcast_receiver_action_record_accessibility_service" translatable="false">io.github.nic562.screen.recorder.RecordAccessibilityService</string>
+    <string name="broadcast_receiver_action_net_traffic_statistics">io.github.nic562.screen.recorder.NetTrafficStatisticsService</string>
 
     <string name="confirm2enable_notification">建议开启通知允许，可同步录屏状态以及相关状态控制</string>
     <string name="recording_notification">录屏状态通知</string>
@@ -56,5 +57,18 @@
     <string name="auto_2back">自动切换到后台</string>
     <string name="auto_2back_description">开启录屏后自动切换到后台</string>
     <string name="failed_to_create_widgets">辅助组件启动失败，请重新授权启动</string>
+    <string name="net_traffic_statistics">网络统计</string>
+    <string name="net_traffic_start">开启网络流量统计</string>
+    <string name="net_traffic_statistics_description">可统计指定应用的网络请求流量，包括上传、下载</string>
+    <string name="is_idle">空闲中</string>
+    <string name="upload_speed">上传速率: %.2fKB/s</string>
+    <string name="download_speed">下载速率: %.2fKB/s</string>
+    <string name="service_preparing">服务准备中…</string>
+    <string name="choose_apps">当前监听所有应用，如需指定应用，请点击下方列表项。变更后请先停止监听再重新开启。</string>
+    <string name="stop">停止</string>
+    <string name="confirm2remove_all">是否确认要清理所有已选项?</string>
+    <string name="search">搜索</string>
+    <string name="not_start">未开启</string>
+    <string name="please_stop_first">请先停止监听</string>
 
 </resources>
