@@ -12,10 +12,10 @@
     <string name="broadcast_receiver_action_record_accessibility_service" translatable="false">io.github.nic562.screen.recorder.RecordAccessibilityService</string>
     <string name="broadcast_receiver_action_net_traffic_statistics">io.github.nic562.screen.recorder.NetTrafficStatisticsService</string>
 
-    <string name="confirm2enable_notification">建议开启通知允许，可同步录屏状态以及相关状态控制</string>
-    <string name="recording_notification">录屏状态通知</string>
+    <string name="confirm2enable_notification">建议开启通知允许，可同步项目工作状态以及相关状态控制</string>
+    <string name="recording_notification">录屏状态</string>
     <string name="recording_notification_description">录屏状态的显示以及相关状态控制</string>
-    <string name="uploading_notification">上传状态通知</string>
+    <string name="uploading_notification">上传状态</string>
     <string name="uploading_notification_description">上传状态的显示以及相关状态控制</string>
     <string name="sure">确定</string>
     <string name="cancel">取消</string>

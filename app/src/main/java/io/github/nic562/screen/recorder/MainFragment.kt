@@ -8,6 +8,7 @@ import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.provider.Settings
+import android.util.Log
 import android.view.*
 import androidx.navigation.fragment.findNavController
 import com.google.android.material.snackbar.Snackbar
@@ -135,39 +136,33 @@ class MainFragment : BaseFragment(), View.OnClickListener {
                 ) {
                     requestPermissions(
                         arrayOf(
-                            Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                            Manifest.permission.READ_EXTERNAL_STORAGE
+                            Manifest.permission.WRITE_EXTERNAL_STORAGE
                         ),
                         reqCodePermission
                     )
                     return
                 }
-                if (getRecordService()?.isNotificationEnable() == false) {
-                    Snackbar.make(
-                        binding.root,
-                        R.string.confirm2enable_notification,
-                        Snackbar.LENGTH_LONG
-                    ).setAction(R.string.sure) {
-                        Intent().apply {
-                            action = Settings.ACTION_APP_NOTIFICATION_SETTINGS
-                            putExtra(Settings.EXTRA_APP_PACKAGE, requireContext().packageName)
-                            putExtra(
-                                Settings.EXTRA_CHANNEL_ID,
-                                requireActivity().applicationInfo.uid
+                getRecordService()?.let { sv ->
+                    sv.checkNotificationEnable(binding.root,
+                        {
+                            startActivityForResult(
+                                sv.getNotificationSettingsIntent(),
+                                reqCodeNotificationSetting
                             )
-                            startActivityForResult(this, reqCodeNotificationSetting)
-                        }
-                    }.addCallback(object : Snackbar.Callback() {
-                        override fun onDismissed(transientBottomBar: Snackbar?, event: Int) {
-                            if (event != 1) {
-                                // 设置了1个Action的话，该Action占用的event为1. 则2为超时自动关闭
-                                getMainActivity().requestRecording()
+                        }, object: Snackbar.Callback() {
+                            override fun onDismissed(transientBottomBar: Snackbar?, event: Int) {
+                                if (event != 1) {
+                                    // 设置了1个Action的话，该Action占用的event为1. 则2为超时自动关闭
+                                    getMainActivity().requestRecording()
+                                }
+                                super.onDismissed(transientBottomBar, event)
                             }
-                            super.onDismissed(transientBottomBar, event)
                         }
-                    }).show()
-                } else {
-                    getMainActivity().requestRecording()
+                    ).apply {
+                        if (this) {
+                            getMainActivity().requestRecording()
+                        }
+                    }
                 }
             }
             R.id.btn_record_stop -> {
@@ -222,7 +217,7 @@ class MainFragment : BaseFragment(), View.OnClickListener {
                         ok += 1
                     }
                 }
-                if (ok == 2) {
+                if (ok == permissions.size) {
                     binding.btnRecordStart.performClick()
                 }
             }

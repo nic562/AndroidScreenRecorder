@@ -83,7 +83,7 @@ class NetTrafficStatisticsService : BaseForegroundService() {
                     val msg = "${
                         getString(R.string.download_speed, downByteSize / 1024.0)
                     } - ${getString(R.string.upload_speed, upByteSize / 1024.0)}"
-                    Log.w(notificationChannel, msg)
+//                    Log.w(notificationChannel, msg)
                     notify(msg)
                     sendBroadcast(broadcastIntent.apply {
                         putExtra("action", "working")

@@ -13,17 +13,28 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.widget.addTextChangedListener
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.snackbar.Snackbar
 import io.github.nic562.screen.recorder.base.BaseFragment
+import io.github.nic562.screen.recorder.base.SomethingWithNotification
 import io.github.nic562.screen.recorder.databinding.FragmentNetTrafficBinding
 
-class NetTrafficFragment : BaseFragment(), View.OnClickListener {
+class NetTrafficFragment : BaseFragment(), View.OnClickListener, SomethingWithNotification {
     private var _binding: FragmentNetTrafficBinding? = null
     private val binding get() = _binding!!
+    private val reqCodeNotificationSetting = 101
 
+    override val notificationChannel: String = "test" // 本Fragment暂时不发送通知，因此暂时无用
+    override val notificationManager: NotificationManagerCompat by lazy {
+        initNotificationManager()
+    }
+    override val notificationBuilder: NotificationCompat.Builder by lazy {
+        initNotificationBuilder()
+    }
     private var isStart = false
     private val chooseAppPkgList = hashSetOf<String>()
     private val chooseAppNames = hashSetOf<String>()
@@ -69,6 +80,10 @@ class NetTrafficFragment : BaseFragment(), View.OnClickListener {
         PackageInfoAdapter(requireActivity().packageManager, this)
     }
 
+    override fun getContext(): Context {
+        return requireActivity()
+    }
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -111,31 +126,45 @@ class NetTrafficFragment : BaseFragment(), View.OnClickListener {
         _binding = null
     }
 
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        when (requestCode) {
+            reqCodeNotificationSetting -> {
+                startNetworkStatisticsService()
+                return
+            }
+        }
+        super.onActivityResult(requestCode, resultCode, data)
+    }
+
     override fun onClick(v: View?) {
         when (v?.id) {
             R.id.btn_start -> {
-                if (chooseAppPkgList.isEmpty()) {
-                    NetTrafficStatisticsService.startForegroundService(
-                        requireActivity(),
-                        Bundle().apply {
-                            putString("action", if (!isStart) "start" else "stop")
-                        })
-                } else {
-                    (requireActivity() as MainActivity).openNetTrafficStatisticsVpnService(
-                        chooseAppPkgList.toList(),
-                        Bundle().apply {
-                            putString("action", if (!isStart) "start" else "stop")
-                        }
-                    )
-                }
                 if (isStart) {
-                    binding.btnStart.setText(R.string.net_traffic_start)
-                    isStart = false
+                    startNetworkStatisticsService()
+                    return
+                }
+                checkNotificationEnable(binding.root, {
+                    startActivityForResult(
+                        getNotificationSettingsIntent(),
+                        reqCodeNotificationSetting
+                    )
+                }, object : Snackbar.Callback() {
+                    override fun onDismissed(transientBottomBar: Snackbar?, event: Int) {
+                        if (event != 1) {
+                            startNetworkStatisticsService()
+                        }
+                        super.onDismissed(transientBottomBar, event)
+                    }
+                }).apply {
+                    if (this) {
+                        startNetworkStatisticsService()
+                    }
                 }
             }
             R.id.item_root -> {
                 if (isStart) {
-                    Snackbar.make(binding.root, R.string.please_stop_first, Snackbar.LENGTH_LONG).show()
+                    Snackbar.make(binding.root, R.string.please_stop_first, Snackbar.LENGTH_LONG)
+                        .show()
                 } else {
                     updateSelectedApp(v.tag as Int)
                 }
@@ -148,6 +177,27 @@ class NetTrafficFragment : BaseFragment(), View.OnClickListener {
                         binding.tvApps.setText(R.string.choose_apps)
                     }.show()
             }
+        }
+    }
+
+    private fun startNetworkStatisticsService() {
+        if (chooseAppPkgList.isEmpty()) {
+            NetTrafficStatisticsService.startForegroundService(
+                requireActivity(),
+                Bundle().apply {
+                    putString("action", if (!isStart) "start" else "stop")
+                })
+        } else {
+            (requireActivity() as MainActivity).openNetTrafficStatisticsVpnService(
+                chooseAppPkgList.toList(),
+                Bundle().apply {
+                    putString("action", if (!isStart) "start" else "stop")
+                }
+            )
+        }
+        if (isStart) {
+            binding.btnStart.setText(R.string.net_traffic_start)
+            isStart = false
         }
     }
 

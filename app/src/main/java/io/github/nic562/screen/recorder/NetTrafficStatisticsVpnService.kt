@@ -41,7 +41,7 @@ class NetTrafficStatisticsVpnService : VpnService(), SomethingWithNotification {
         this::class.java.simpleName
     }
     private val notificationID: Int = 99999
-    override val notificationChannel = "VpnService"
+    override val notificationChannel = "NetTrafficStatisticsService"
     override val notificationManager: NotificationManagerCompat by lazy {
         initNotificationManager()
     }

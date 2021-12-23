@@ -1,8 +1,6 @@
 package io.github.nic562.screen.recorder
 
-import android.app.Notification
 import android.app.PendingIntent
-import android.app.Service
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -16,22 +14,18 @@ import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.util.Log
-import androidx.core.app.NotificationChannelCompat
-import androidx.core.app.NotificationCompat
-import androidx.core.app.NotificationManagerCompat
+import io.github.nic562.screen.recorder.base.BaseForegroundService
+import io.github.nic562.screen.recorder.base.SomethingWithNotification
 import io.github.nic562.screen.recorder.db.VideoInfo
 import io.github.nic562.screen.recorder.tools.Video
 import java.io.File
 import java.util.*
 
-class MediaRecordService : Service() {
-    private val notificationChannel = "recordService"
-    private val notificationID = 100
+class MediaRecordService : BaseForegroundService(), SomethingWithNotification {
     private val tag = "MediaRecordService"
-
-    private val notificationManager by lazy {
-        NotificationManagerCompat.from(this)
-    }
+    override val notificationChannel = "recordService"
+    override val notificationID = 100
+    override var autoStartForeground = false
 
     private val mediaProjectionManager by lazy {
         getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
@@ -54,16 +48,6 @@ class MediaRecordService : Service() {
             stopRecordBroadcastIntent,
             PendingIntent.FLAG_UPDATE_CURRENT
         )
-    }
-
-    private val notificationBuilder by lazy {
-        NotificationCompat.Builder(this, notificationChannel).apply {
-            setSmallIcon(R.drawable.ic_stat_record)
-            setContentTitle(getString(R.string.app_name))
-            setContentIntent(notificationOpenIntent)
-            priority = NotificationCompat.PRIORITY_HIGH
-            setOnlyAlertOnce(true)
-        }
     }
 
     private val broadcastAction by lazy {
@@ -95,19 +79,25 @@ class MediaRecordService : Service() {
 
     private var callback: Callback? = null
 
+    override fun getContext(): Context {
+        return this
+    }
+
+    override fun getNotificationSmallIconId(): Int {
+        return R.drawable.ic_stat_record
+    }
+
+    override fun getNotificationTitle(): String {
+        return getString(R.string.recording_notification)
+    }
+
+    override fun getNotificationDescription(): String {
+        return getString(R.string.recording_notification_description)
+    }
+
     override fun onCreate() {
         super.onCreate()
-        NotificationChannelCompat.Builder(
-            notificationChannel,
-            NotificationManagerCompat.IMPORTANCE_HIGH
-        ).setName(getString(R.string.recording_notification))
-            .setDescription(getString(R.string.recording_notification_description))
-            .setVibrationEnabled(true)
-            .setLightsEnabled(true)
-            .build()
-            .apply {
-                notificationManager.createNotificationChannel(this)
-            }
+        notificationBuilder.setContentIntent(notificationOpenIntent)
         IntentFilter().apply {
             addAction(broadcastAction)
             registerReceiver(broadcastReceiver, this)
@@ -199,12 +189,7 @@ class MediaRecordService : Service() {
     }
 
     private fun startNotification() {
-        startForeground(
-            notificationID,
-            notificationBuilder
-                .setContentText(getString(R.string.recording_num, 0))
-                .build()
-        )
+        nowStartForeground()
         sendBroadcastRecordDuration(0)
     }
 
@@ -240,18 +225,6 @@ class MediaRecordService : Service() {
         }
     }
 
-    private fun notify(msg: String) {
-        notify(notificationBuilder.setContentText(msg).build())
-    }
-
-    private fun notify(n: Notification) {
-        notificationManager.notify(notificationID, n)
-    }
-
-    private fun closeNotification() {
-        stopForeground(STOP_FOREGROUND_REMOVE)
-    }
-
     private fun createRecorder(
         width: Int,
         height: Int,
@@ -278,10 +251,6 @@ class MediaRecordService : Service() {
 
     fun removeCallback() {
         this.callback = null
-    }
-
-    fun isNotificationEnable(): Boolean {
-        return notificationManager.areNotificationsEnabled()
     }
 
     fun isRecording(): Boolean {

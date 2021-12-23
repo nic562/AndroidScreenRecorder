@@ -28,6 +28,8 @@ abstract class BaseForegroundService : Service(), SomethingWithNotification {
 
     protected abstract val notificationID: Int
 
+    protected open var autoStartForeground = true
+
     override val notificationBuilder: NotificationCompat.Builder by lazy {
         initNotificationBuilder()
     }
@@ -43,16 +45,28 @@ abstract class BaseForegroundService : Service(), SomethingWithNotification {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
+        if (autoStartForeground)
+            nowStartForeground()
+    }
+
+    override fun onDestroy() {
+        closeNotification()
+        // 前台服务必须用这个方法关闭通知，cancel是无效的
+        super.onDestroy()
+    }
+
+    /***
+     * 注意，[startForegroundService] 调用后5秒内必须调用 [startForeground]
+     */
+    protected fun nowStartForeground() {
         startForeground(
             notificationID,
             notificationBuilder.setContentText(getString(R.string.service_preparing)).build()
         )
     }
 
-    override fun onDestroy() {
+    protected fun closeNotification() {
         stopForeground(STOP_FOREGROUND_REMOVE)
-        // 前台服务必须用这个方法关闭通知，cancel是无效的
-        super.onDestroy()
     }
 
     protected fun notify(msg: String) {

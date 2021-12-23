@@ -1,10 +1,15 @@
 package io.github.nic562.screen.recorder.base
 
 import android.app.Notification
+import android.content.Intent
+import android.provider.Settings
+import android.view.View
 import androidx.annotation.DrawableRes
 import androidx.core.app.NotificationChannelCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import com.google.android.material.snackbar.Snackbar
+import io.github.nic562.screen.recorder.R
 
 interface SomethingWithNotification : SomethingWithContext {
     val notificationChannel: String
@@ -32,6 +37,40 @@ interface SomethingWithNotification : SomethingWithContext {
 
     fun createNotificationChannel() {
         createNotificationChannel(getNotificationTitle(), getNotificationDescription())
+    }
+
+    fun isNotificationEnable(): Boolean {
+        return notificationManager.areNotificationsEnabled()
+    }
+
+    fun checkNotificationEnable(
+        snackBaseView: View,
+        onOKAction: View.OnClickListener,
+        callback: Snackbar.Callback? = null
+    ): Boolean {
+        if (isNotificationEnable())
+            return true
+        Snackbar.make(
+            snackBaseView,
+            R.string.confirm2enable_notification,
+            Snackbar.LENGTH_LONG
+        ).setAction(R.string.sure, onOKAction).apply {
+            if (callback != null) {
+                addCallback(callback)
+            }
+        }.show()
+        return false
+    }
+
+    fun getNotificationSettingsIntent(): Intent {
+        return Intent().apply {
+            action = Settings.ACTION_APP_NOTIFICATION_SETTINGS
+            putExtra(Settings.EXTRA_APP_PACKAGE, getContext().packageName)
+            putExtra(
+                Settings.EXTRA_CHANNEL_ID,
+                getContext().applicationInfo.uid
+            )
+        }
     }
 
     fun createNotificationChannel(name: String, description: String) {
