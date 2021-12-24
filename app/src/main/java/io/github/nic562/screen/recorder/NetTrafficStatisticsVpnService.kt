@@ -1,5 +1,6 @@
 package io.github.nic562.screen.recorder
 
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.net.VpnService
@@ -9,7 +10,6 @@ import android.os.ParcelFileDescriptor
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import io.github.nic562.screen.recorder.base.SomethingWithNotification
 import io.github.nic562.screen.recorder.tools.bio.BioUdpHandler
 import io.github.nic562.screen.recorder.tools.bio.NioSingleThreadTcpHandler
 import io.github.nic562.screen.recorder.tools.protocol.Packet
@@ -26,7 +26,7 @@ import java.util.concurrent.Executors
 /**
  * 基于VPN网关转发的网络流量统计服务，可统计指定应用
  */
-class NetTrafficStatisticsVpnService : VpnService(), SomethingWithNotification {
+class NetTrafficStatisticsVpnService : VpnService(), NetTrafficStatisticsServiceHelper {
     companion object {
         /**
          * 判断是否VPN是否授权，如果是，返回 Null，
@@ -49,10 +49,6 @@ class NetTrafficStatisticsVpnService : VpnService(), SomethingWithNotification {
         initNotificationBuilder()
     }
 
-    private val broadcastIntent by lazy {
-        Intent(getString(R.string.broadcast_receiver_action_net_traffic_statistics))
-    }
-
     private val executorService by lazy {
         Executors.newFixedThreadPool(10)
     }
@@ -73,30 +69,52 @@ class NetTrafficStatisticsVpnService : VpnService(), SomethingWithNotification {
     private val handler by lazy {
         Handler(mainLooper)
     }
-    private val updateNotificationRunnable = Runnable {
-        tunnelThread?.apply {
-            val downByteSize = this.getAndResetDownloadSize()
-            val upByteSize = this.getAndResetUploadSize()
-            sendNotification(
-                "${
-                    getString(
-                        R.string.upload_speed,
-                        upByteSize / 100.0
-                    )
-                }: ${
-                    getString(
-                        R.string.download_speed,
-                        downByteSize / 100.0
-                    )
-                }"
-            )
-            sendBroadcast(broadcastIntent.apply {
-                putExtra("action", "working")
-                putExtra("downByteSize", downByteSize)
-                putExtra("upByteSize", upByteSize)
-            })
-            updateNotification()
+    private val updateNotificationRunnable = object : Runnable {
+        private var idx = 0
+        override fun run() {
+            tunnelThread?.apply {
+                val downByteSize = this.getAndResetDownloadSize()
+                val upByteSize = this.getAndResetUploadSize()
+                onNetTrafficStatistics(idx++, downByteSize, upByteSize)
+                updateNotification()
+            }
         }
+    }
+    override val sendNetTrafficBroadcastIntent: Intent by lazy {
+        createSendNetTrafficBroadcastIntent()
+    }
+    override val receiveNetTrafficBroadcastAction: String by lazy {
+        createReceiveNetTrafficBroadcastAction()
+    }
+    override val receiveNetTrafficBroadcastReceiver: BroadcastReceiver by lazy {
+        createReceiveNetTrafficBroadcastReceiver()
+    }
+
+    override var saveFile: NetTrafficStatisticsServiceHelper.NetTrafficStatisticsLogHandler? = null
+
+    override fun onNetTrafficReceiveActionToStart(intent: Intent) {
+        if (tunnelThread == null || tunnelThread?.isAlive == false) {
+            val apps = intent.getStringArrayListExtra("apps")
+            if (apps != null && apps.size > 0) {
+                Log.w(tag, "Willing to listening with: [${apps.joinToString(",")}]")
+                startListener(*apps.toTypedArray())
+            } else {
+                startListener()
+            }
+        }
+    }
+
+    override fun onNetTrafficReceiveActionToStop() {
+        tunnelThread?.interrupt()
+        stopSelf()
+    }
+
+    override fun sendNetTrafficBroadcastWorking(downByteSize: Long, upByteSize: Long) {
+        sendNetTrafficBroadcastWorking("vpn", downByteSize, upByteSize)
+    }
+
+    override fun notify(msg: String) {
+        sendNotification(notificationBuilder, msg, notificationID)
     }
 
     override fun getNotificationTitle(): String {
@@ -129,27 +147,11 @@ class NetTrafficStatisticsVpnService : VpnService(), SomethingWithNotification {
                 this
             )
         )
-        sendBroadcast(broadcastIntent.putExtra("action", "create"))
+        onNetTrafficStatisticsCreate()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        when (intent?.getStringExtra("action")) {
-            "start" -> {
-                if (tunnelThread == null || tunnelThread?.isAlive == false) {
-                    val apps = intent.getStringArrayListExtra("apps")
-                    Log.w(tag, "Willing to listening with: [${apps?.joinToString(",")}]")
-                    if (apps != null) {
-                        startListener(*apps.toTypedArray())
-                    } else {
-                        startListener()
-                    }
-                }
-            }
-            "stop" -> {
-                tunnelThread?.interrupt()
-                stopSelf()
-            }
-        }
+        onNetTrafficStartCommand(intent, flags, startId)
         return super.onStartCommand(intent, flags, startId)
     }
 
@@ -160,7 +162,7 @@ class NetTrafficStatisticsVpnService : VpnService(), SomethingWithNotification {
             tunnelThread = null
         }
         executorService.shutdown()
-        sendBroadcast(broadcastIntent.putExtra("action", "destroy"))
+        onNetTrafficStatisticsDestroy()
         cancelNotification(notificationID)
         super.onDestroy()
     }
@@ -195,13 +197,6 @@ class NetTrafficStatisticsVpnService : VpnService(), SomethingWithNotification {
 
     private fun updateNotification() {
         handler.postDelayed(updateNotificationRunnable, 1000)
-    }
-
-    private fun sendNotification(msg: String) {
-        notificationBuilder
-            .setContentText(msg).build().apply {
-                notificationManager.notify(notificationID, this)
-            }
     }
 
     private class TunnelOutputThread(

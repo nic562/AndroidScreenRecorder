@@ -2,7 +2,6 @@ package io.github.nic562.screen.recorder.base
 
 import android.app.Service
 import android.content.Context
-import android.content.ContextWrapper
 import android.content.Intent
 import android.os.Bundle
 import androidx.core.app.NotificationCompat
@@ -14,7 +13,7 @@ abstract class BaseForegroundService : Service(), SomethingWithNotification {
 
     companion object {
         fun startForegroundService(
-            ctx: ContextWrapper,
+            ctx: Context,
             serviceClass: Class<out BaseForegroundService>,
             extras: Bundle? = null
         ) {
@@ -55,6 +54,10 @@ abstract class BaseForegroundService : Service(), SomethingWithNotification {
         super.onDestroy()
     }
 
+    override fun notify(msg: String) {
+        sendNotification(notificationBuilder, msg, notificationID)
+    }
+
     /***
      * 注意，[startForegroundService] 调用后5秒内必须调用 [startForeground]
      */
@@ -67,9 +70,5 @@ abstract class BaseForegroundService : Service(), SomethingWithNotification {
 
     protected fun closeNotification() {
         stopForeground(STOP_FOREGROUND_REMOVE)
-    }
-
-    protected fun notify(msg: String) {
-        sendNotification(notificationBuilder, msg, notificationID)
     }
 }

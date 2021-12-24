@@ -1,6 +1,7 @@
 package io.github.nic562.screen.recorder
 
-import android.content.ContextWrapper
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
 import android.net.TrafficStats
 import android.os.Build
@@ -12,10 +13,10 @@ import io.github.nic562.screen.recorder.base.BaseForegroundService
 /**
  * 基于[TrafficStats] 的网络请求统计服务，仅可以统计全局流量
  */
-class NetTrafficStatisticsService : BaseForegroundService() {
+class NetTrafficStatisticsService : BaseForegroundService(), NetTrafficStatisticsServiceHelper {
 
     companion object {
-        fun startForegroundService(ctx: ContextWrapper, extras: Bundle? = null) {
+        fun startForegroundService(ctx: Context, extras: Bundle? = null) {
             startForegroundService(
                 ctx,
                 NetTrafficStatisticsService::class.java,
@@ -30,8 +31,20 @@ class NetTrafficStatisticsService : BaseForegroundService() {
 
     private var trafficThread: TrafficThread? = null
 
-    private val broadcastIntent by lazy {
-        Intent(getString(R.string.broadcast_receiver_action_net_traffic_statistics))
+    override val sendNetTrafficBroadcastIntent: Intent by lazy {
+        createSendNetTrafficBroadcastIntent()
+    }
+    override val receiveNetTrafficBroadcastAction: String by lazy {
+        createReceiveNetTrafficBroadcastAction()
+    }
+    override val receiveNetTrafficBroadcastReceiver: BroadcastReceiver by lazy {
+        createReceiveNetTrafficBroadcastReceiver()
+    }
+
+    override var saveFile: NetTrafficStatisticsServiceHelper.NetTrafficStatisticsLogHandler? = null
+
+    override fun onNetTrafficReceiveActionToStop() {
+        stopSelf()
     }
 
     override fun getNotificationTitle(): String {
@@ -52,18 +65,11 @@ class NetTrafficStatisticsService : BaseForegroundService() {
 
     override fun onCreate() {
         super.onCreate()
-        sendBroadcast(broadcastIntent.putExtra("action", "create"))
+        onNetTrafficStatisticsCreate()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        when (intent?.getStringExtra("action")) {
-            "start" -> {
-                startTrafficThread()
-            }
-            "stop" -> {
-                stopSelf()
-            }
-        }
+        onNetTrafficStartCommand(intent, flags, startId)
         return super.onStartCommand(intent, flags, startId)
     }
 
@@ -72,24 +78,21 @@ class NetTrafficStatisticsService : BaseForegroundService() {
             trafficThread?.interrupt()
             trafficThread = null
         }
-        sendBroadcast(broadcastIntent.putExtra("action", "destroy"))
+        onNetTrafficStatisticsDestroy()
         super.onDestroy()
     }
 
-    private fun startTrafficThread() {
+    override fun sendNetTrafficBroadcastWorking(downByteSize: Long, upByteSize: Long) {
+        sendNetTrafficBroadcastWorking("normal", downByteSize, upByteSize)
+    }
+
+
+    override fun onNetTrafficReceiveActionToStart(intent: Intent) {
         if (trafficThread == null || trafficThread?.isAlive == false) {
             trafficThread = TrafficThread(object : TrafficThread.Callback {
+                private var idx = 0
                 override fun onData(downByteSize: Long, upByteSize: Long) {
-                    val msg = "${
-                        getString(R.string.download_speed, downByteSize / 1024.0)
-                    } - ${getString(R.string.upload_speed, upByteSize / 1024.0)}"
-//                    Log.w(notificationChannel, msg)
-                    notify(msg)
-                    sendBroadcast(broadcastIntent.apply {
-                        putExtra("action", "working")
-                        putExtra("downByteSize", downByteSize)
-                        putExtra("upByteSize", upByteSize)
-                    })
+                    onNetTrafficStatistics(idx ++, downByteSize, upByteSize)
                 }
             }).apply {
                 start()

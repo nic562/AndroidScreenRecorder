@@ -14,8 +14,14 @@ import io.github.nic562.screen.recorder.R
 interface SomethingWithNotification : SomethingWithContext {
     val notificationChannel: String
 
+    /**
+     * @see [initNotificationManager]
+     */
     val notificationManager: NotificationManagerCompat
 
+    /**
+     * @see [initNotificationBuilder]
+     */
     val notificationBuilder: NotificationCompat.Builder
 
     fun initNotificationManager(): NotificationManagerCompat {
@@ -116,6 +122,11 @@ interface SomethingWithNotification : SomethingWithContext {
     fun notify(notificationID: Int, n: Notification) {
         notificationManager.notify(notificationID, n)
     }
+
+    /**
+     * @see [notify]
+     */
+    fun notify(msg: String)
 
     fun cancelNotification(notificationID: Int) {
         notificationManager.cancel(notificationID)

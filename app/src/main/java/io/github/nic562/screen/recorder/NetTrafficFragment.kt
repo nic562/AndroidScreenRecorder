@@ -1,13 +1,15 @@
 package io.github.nic562.screen.recorder
 
 import android.annotation.SuppressLint
-import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
+import android.os.Environment
+import android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -23,10 +25,13 @@ import io.github.nic562.screen.recorder.base.BaseFragment
 import io.github.nic562.screen.recorder.base.SomethingWithNotification
 import io.github.nic562.screen.recorder.databinding.FragmentNetTrafficBinding
 
-class NetTrafficFragment : BaseFragment(), View.OnClickListener, SomethingWithNotification {
+class NetTrafficFragment : BaseFragment(), View.OnClickListener,
+    SomethingWithNetTrafficStatistics,
+    SomethingWithNotification {
     private var _binding: FragmentNetTrafficBinding? = null
     private val binding get() = _binding!!
     private val reqCodeNotificationSetting = 101
+    private val reqCodeFilePermissionSetting = 102
 
     override val notificationChannel: String = "test" // 本Fragment暂时不发送通知，因此暂时无用
     override val notificationManager: NotificationManagerCompat by lazy {
@@ -36,44 +41,15 @@ class NetTrafficFragment : BaseFragment(), View.OnClickListener, SomethingWithNo
         initNotificationBuilder()
     }
     private var isStart = false
+    private var network = ""
     private val chooseAppPkgList = hashSetOf<String>()
     private val chooseAppNames = hashSetOf<String>()
 
     private val broadcastAction by lazy {
         getString(R.string.broadcast_receiver_action_net_traffic_statistics)
     }
-    private val broadcastReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            when (intent?.action) {
-                broadcastAction -> {
-                    when (intent.getStringExtra("action")) {
-                        "create" -> {
-                            isStart = true
-                            binding.tvStatus.setText(R.string.is_idle)
-                            binding.btnStart.setText(R.string.stop)
-                        }
-                        "destroy" -> {
-                            isStart = false
-                            binding.tvStatus.setText(R.string.not_start)
-                            binding.btnStart.setText(R.string.net_traffic_start)
-                        }
-                        "working" -> {
-                            val downByteSize = getString(
-                                R.string.download_speed,
-                                intent.getLongExtra("downByteSize", 0L) / 1024.0
-                            )
-                            val upByteSize = getString(
-                                R.string.upload_speed,
-                                intent.getLongExtra("upByteSize", 0L) / 1024.0
-                            )
-                            binding.tvStatus.text = "$downByteSize - $upByteSize"
-                            isStart = true
-                            binding.btnStart.setText(R.string.stop)
-                        }
-                    }
-                }
-            }
-        }
+    private val broadcastReceiver by lazy {
+        createNetTrafficStatisticsBroadcastReceiver(getNetTrafficStatisticsBroadcastAction())
     }
 
     private val adapter: PackageInfoAdapter by lazy {
@@ -101,11 +77,40 @@ class NetTrafficFragment : BaseFragment(), View.OnClickListener, SomethingWithNo
                 LinearLayoutManager(requireContext(), LinearLayoutManager.VERTICAL, false)
             it.rvAppList.adapter = adapter
             it.tvApps.setOnClickListener(this)
+            it.btnPermission.setOnClickListener(this)
             it.etSearch.addTextChangedListener { et ->
                 val searchText = et?.toString()?.trim() ?: ""
                 adapter.search(searchText)
             }
+            checkingFilePermission()
         }
+    }
+
+    override fun onNetStatisticsCreate() {
+        isStart = true
+        binding.tvStatus.setText(R.string.is_idle)
+        binding.btnStart.setText(R.string.stop)
+    }
+
+    override fun onNetStatisticsDestroy() {
+        isStart = false
+        binding.tvStatus.setText(R.string.not_start)
+        binding.btnStart.setText(R.string.net_traffic_start)
+    }
+
+    override fun onNetStatisticsWorking(network: String, downByteSize: Long, uploadByteSize: Long) {
+        val downByteSize = getString(
+            R.string.download_speed,
+            downByteSize / 1024.0
+        )
+        val upByteSize = getString(
+            R.string.upload_speed,
+            uploadByteSize / 1024.0
+        )
+        this.network = network
+        isStart = true
+        binding.tvStatus.text = "$downByteSize - $upByteSize"
+        binding.btnStart.setText(R.string.stop)
     }
 
     override fun onResume() {
@@ -127,20 +132,30 @@ class NetTrafficFragment : BaseFragment(), View.OnClickListener, SomethingWithNo
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (onNetTrafficStatisticsActivityResult(requestCode, resultCode, data)) {
+            return
+        }
         when (requestCode) {
             reqCodeNotificationSetting -> {
-                startNetworkStatisticsService()
+                openNetworkStatisticsService()
                 return
+            }
+            reqCodeFilePermissionSetting -> {
+                checkingFilePermission()
             }
         }
         super.onActivityResult(requestCode, resultCode, data)
+    }
+
+    override fun notify(msg: String) {
+        TODO("Not yet implemented")
     }
 
     override fun onClick(v: View?) {
         when (v?.id) {
             R.id.btn_start -> {
                 if (isStart) {
-                    startNetworkStatisticsService()
+                    openNetworkStatisticsService()
                     return
                 }
                 checkNotificationEnable(binding.root, {
@@ -151,13 +166,13 @@ class NetTrafficFragment : BaseFragment(), View.OnClickListener, SomethingWithNo
                 }, object : Snackbar.Callback() {
                     override fun onDismissed(transientBottomBar: Snackbar?, event: Int) {
                         if (event != 1) {
-                            startNetworkStatisticsService()
+                            openNetworkStatisticsService()
                         }
                         super.onDismissed(transientBottomBar, event)
                     }
                 }).apply {
                     if (this) {
-                        startNetworkStatisticsService()
+                        openNetworkStatisticsService()
                     }
                 }
             }
@@ -177,27 +192,28 @@ class NetTrafficFragment : BaseFragment(), View.OnClickListener, SomethingWithNo
                         binding.tvApps.setText(R.string.choose_apps)
                     }.show()
             }
+            R.id.btn_permission -> {
+                if (Build.VERSION.SDK_INT > Build.VERSION_CODES.Q)
+                    startActivityForResult(
+                        Intent(ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION),
+                        reqCodeFilePermissionSetting
+                    )
+            }
         }
     }
 
-    private fun startNetworkStatisticsService() {
-        if (chooseAppPkgList.isEmpty()) {
-            NetTrafficStatisticsService.startForegroundService(
-                requireActivity(),
-                Bundle().apply {
-                    putString("action", if (!isStart) "start" else "stop")
-                })
-        } else {
-            (requireActivity() as MainActivity).openNetTrafficStatisticsVpnService(
-                chooseAppPkgList.toList(),
-                Bundle().apply {
-                    putString("action", if (!isStart) "start" else "stop")
-                }
-            )
-        }
+    private fun checkingFilePermission() {
+        binding.btnPermission.visibility =
+            if (Build.VERSION.SDK_INT > Build.VERSION_CODES.Q && !Environment.isExternalStorageManager()) View.VISIBLE else View.GONE
+    }
+
+    private fun openNetworkStatisticsService() {
         if (isStart) {
             binding.btnStart.setText(R.string.net_traffic_start)
             isStart = false
+            stopStatisticsService()
+        } else {
+            startStatisticsService(chooseAppPkgList.toList())
         }
     }
 
