@@ -449,7 +449,7 @@ public class NioSingleThreadTcpHandler implements Runnable {
                 Thread.sleep(1);
             }
         } catch (Exception e) {
-            Log.e(e.getMessage(), "", e);
+            Log.e(TAG, e.getMessage(), e);
         }
     }
 }

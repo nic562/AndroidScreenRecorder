@@ -4,6 +4,7 @@ import android.net.VpnService;
 import android.util.Log;
 
 import java.io.IOException;
+import java.net.ConnectException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
@@ -169,7 +170,12 @@ public class BioUdpHandler implements Runnable {
                     DatagramChannel outputChannel = DatagramChannel.open();
                     vpnService.protect(outputChannel.socket());
                     outputChannel.socket().bind(null);
-                    outputChannel.connect(new InetSocketAddress(destinationAddress, destinationPort));
+                    try {
+                        outputChannel.connect(new InetSocketAddress(destinationAddress, destinationPort));
+                    } catch (ConnectException e) {
+                        Log.w(TAG, "connect error: " + ipAndPort, e);
+                        continue;
+                    }
 
                     outputChannel.configureBlocking(false);
 
