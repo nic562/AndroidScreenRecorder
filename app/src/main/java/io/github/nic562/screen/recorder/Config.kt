@@ -29,6 +29,10 @@ object Config {
         return preference.getInt("record_count_down_second", 3)
     }
 
+    fun setRecordCountDownSeconds(s: Int) {
+        preference.putInt("record_count_down_second", s)
+    }
+
     fun getWidgetPosition(): Pair<Int, Int> {
         val p = preference.getString("widgetPosition", "0,0")!!.split(",")
         return p[0].toInt() to p[1].toInt()
@@ -40,5 +44,13 @@ object Config {
 
     fun getAutoToBack() :Boolean {
         return preference.getBoolean("auto_2back", false)
+    }
+
+    fun setAutoToBack(b: Boolean) {
+        preference.putBoolean("auto_2back", b)
+    }
+
+    fun setAutoStopRecord(b: Boolean) {
+        preference.putBoolean("auto_stop_record", b)
     }
 }

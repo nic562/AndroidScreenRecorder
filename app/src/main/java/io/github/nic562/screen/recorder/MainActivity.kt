@@ -3,6 +3,7 @@ package io.github.nic562.screen.recorder
 import android.content.*
 import android.media.projection.MediaProjectionManager
 import android.os.Bundle
+import android.os.Handler
 import android.os.IBinder
 import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
@@ -36,6 +37,8 @@ class MainActivity : AppCompatActivity() {
     private val mediaProjectionManager: MediaProjectionManager by lazy {
         getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
     }
+
+    private var recordCustomKey: String? = null
 
     val recordStatusViewModel: RecordStatusViewModel by lazy {
         ViewModelProvider.AndroidViewModelFactory.getInstance(application)
@@ -141,6 +144,8 @@ class MainActivity : AppCompatActivity() {
             addAction(accessBroadcastAction)
             registerReceiver(broadcastReceiver, this)
         }
+
+        handingIntent(intent)
     }
 
     override fun onNewIntent(intent: Intent?) {
@@ -154,7 +159,33 @@ class MainActivity : AppCompatActivity() {
             }
             requestRecording()
         }
+        handingIntent(intent)
         super.onNewIntent(intent)
+    }
+
+    private val handler by lazy {
+        Handler(mainLooper)
+    }
+    private fun handingIntent(intent: Intent?) {
+        if (intent == null) {
+            return
+        }
+        if (intent.hasExtra("setting")) {
+            Config.setAutoToBack(intent.getBooleanExtra("auto_2back", false))
+            Config.setAutoStopRecord(intent.getBooleanExtra("auto_stop_record", false))
+            Config.setRecordCountDownSeconds(intent.getIntExtra("record_count_down_second", 3))
+        } else if (intent.hasExtra("ui")) {
+            when(val action = intent.getStringExtra("ui")) {
+                "startRecord" -> {
+                    recordCustomKey = intent.getStringExtra("key")
+                    handler.postDelayed({
+                        sendBroadcast(Intent(getString(R.string.broadcast_receiver_action_remote_calling_ui)).apply {
+                            putExtra("action", action)
+                        })
+                    }, 300)
+                }
+            }
+        }
     }
 
     override fun onSupportNavigateUp(): Boolean {
@@ -220,6 +251,8 @@ class MainActivity : AppCompatActivity() {
             )
             putExtra("resultCode", RESULT_OK)
             putExtra("data", recordData)
+            putExtra("customKey", recordCustomKey)
+            recordCustomKey = null // 消费后则清掉，以保证不会重复
             startForegroundService(this)
         }
     }

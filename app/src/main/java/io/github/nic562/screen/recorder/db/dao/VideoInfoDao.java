@@ -28,6 +28,7 @@ public class VideoInfoDao extends AbstractDao<VideoInfo, Long> {
         public final static Property FilePath = new Property(1, String.class, "filePath", false, "FILE_PATH");
         public final static Property CreateTime = new Property(2, java.util.Date.class, "createTime", false, "CREATE_TIME");
         public final static Property PreviewPath = new Property(3, String.class, "previewPath", false, "PREVIEW_PATH");
+        public final static Property CustomKey = new Property(4, String.class, "customKey", false, "CUSTOM_KEY");
     }
 
 
@@ -46,10 +47,13 @@ public class VideoInfoDao extends AbstractDao<VideoInfo, Long> {
                 "\"_id\" INTEGER PRIMARY KEY AUTOINCREMENT ," + // 0: id
                 "\"FILE_PATH\" TEXT NOT NULL ," + // 1: filePath
                 "\"CREATE_TIME\" INTEGER NOT NULL ," + // 2: createTime
-                "\"PREVIEW_PATH\" TEXT);"); // 3: previewPath
+                "\"PREVIEW_PATH\" TEXT," + // 3: previewPath
+                "\"CUSTOM_KEY\" TEXT NOT NULL );"); // 4: customKey
         // Add Indexes
         db.execSQL("CREATE UNIQUE INDEX " + constraint + "IDX_VIDEO_INFO_CREATE_TIME ON \"VIDEO_INFO\"" +
                 " (\"CREATE_TIME\" ASC);");
+        db.execSQL("CREATE UNIQUE INDEX " + constraint + "IDX_VIDEO_INFO_CUSTOM_KEY ON \"VIDEO_INFO\"" +
+                " (\"CUSTOM_KEY\" ASC);");
     }
 
     /** Drops the underlying database table. */
@@ -73,6 +77,7 @@ public class VideoInfoDao extends AbstractDao<VideoInfo, Long> {
         if (previewPath != null) {
             stmt.bindString(4, previewPath);
         }
+        stmt.bindString(5, entity.getCustomKey());
     }
 
     @Override
@@ -90,6 +95,7 @@ public class VideoInfoDao extends AbstractDao<VideoInfo, Long> {
         if (previewPath != null) {
             stmt.bindString(4, previewPath);
         }
+        stmt.bindString(5, entity.getCustomKey());
     }
 
     @Override
@@ -103,7 +109,8 @@ public class VideoInfoDao extends AbstractDao<VideoInfo, Long> {
             cursor.isNull(offset + 0) ? null : cursor.getLong(offset + 0), // id
             cursor.getString(offset + 1), // filePath
             new java.util.Date(cursor.getLong(offset + 2)), // createTime
-            cursor.isNull(offset + 3) ? null : cursor.getString(offset + 3) // previewPath
+            cursor.isNull(offset + 3) ? null : cursor.getString(offset + 3), // previewPath
+            cursor.getString(offset + 4) // customKey
         );
         return entity;
     }
@@ -114,6 +121,7 @@ public class VideoInfoDao extends AbstractDao<VideoInfo, Long> {
         entity.setFilePath(cursor.getString(offset + 1));
         entity.setCreateTime(new java.util.Date(cursor.getLong(offset + 2)));
         entity.setPreviewPath(cursor.isNull(offset + 3) ? null : cursor.getString(offset + 3));
+        entity.setCustomKey(cursor.getString(offset + 4));
      }
     
     @Override

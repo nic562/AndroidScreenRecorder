@@ -28,10 +28,20 @@ class MainFragment : BaseFragment(), View.OnClickListener {
     private val uploadBroadcastAction by lazy {
         getString(R.string.broadcast_receiver_action_upload_manager)
     }
+    private val uiBroadcastAction by lazy {
+        getString(R.string.broadcast_receiver_action_remote_calling_ui)
+    }
 
     private val broadcastReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             when (intent?.action) {
+                uiBroadcastAction -> {
+                    when (val act = intent.getStringExtra("action")) {
+                        "startRecord" -> {
+                            binding.btnRecordStart.performClick()
+                        }
+                    }
+                }
                 uploadBroadcastAction -> {
                     when (val act = intent.getStringExtra("action")) {
                         "start" -> {
@@ -112,6 +122,7 @@ class MainFragment : BaseFragment(), View.OnClickListener {
         super.onResume()
         IntentFilter().apply {
             addAction(uploadBroadcastAction)
+            addAction(uiBroadcastAction)
             requireActivity().registerReceiver(broadcastReceiver, this)
         }
     }

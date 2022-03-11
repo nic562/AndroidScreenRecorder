@@ -36,6 +36,7 @@ class MediaRecordService : BaseForegroundService(), SomethingWithNotification {
     private var isRecording = false
     private var recordingDuration = 0
     private var currentDstFilePath: String? = null
+    private var currentCustomKey: String? = null
     private val handler by lazy { Handler(mainLooper) }
 
     private val stopRecordBroadcastIntent by lazy {
@@ -115,6 +116,9 @@ class MediaRecordService : BaseForegroundService(), SomethingWithNotification {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (isRecording) {
+            return super.onStartCommand(intent, flags, startId)
+        }
         intent?.apply {
             val width = getIntExtra("width", -1)
             val height = getIntExtra("height", -1)
@@ -144,6 +148,13 @@ class MediaRecordService : BaseForegroundService(), SomethingWithNotification {
                 Log.w(tag, "intent-data is Null!")
                 return@apply
             }
+            var customKey = getStringExtra("customKey")
+            if (customKey == null) {
+                // 每次录屏保证整个key 不重复
+                customKey = UUID.randomUUID().toString()
+            }
+            currentCustomKey = customKey
+            Log.i(tag, "willing saving record screen with custom key: $currentCustomKey")
             try {
                 recorder = createRecorder(width, height, dstPath).apply {
                     currentDstFilePath = dstPath
@@ -203,21 +214,8 @@ class MediaRecordService : BaseForegroundService(), SomethingWithNotification {
                 notify(getString(R.string.recording_num, recordingDuration))
                 sendBroadcastRecordDuration(recordingDuration)
                 if (Config.getAutoStopRecord() && recordingDuration >= Config.getRecordCountDownSeconds()) {
-                    when {
-                        (application as App).isActivityVisible -> {
-                            stop()
-                        }
-                        Build.VERSION.SDK_INT < Build.VERSION_CODES.Q -> {
-                            startActivity(
-                                RecordNotificationReceiver.makeCallUpAppAndStopRecordIntent(
-                                    this
-                                )
-                            )
-                        }
-                        else -> {
-                            notify(getString(R.string.record_finished_need_to_upload))
-                        }
-                    }
+                    stop()
+                    notify(getString(R.string.record_finished_need_to_upload))
                     return@postDelayed
                 }
                 updateNotification()
@@ -288,6 +286,7 @@ class MediaRecordService : BaseForegroundService(), SomethingWithNotification {
             VideoInfo().apply {
                 createTime = Date()
                 filePath = it
+                customKey = currentCustomKey
                 previewPath = pv.absolutePath
                 getApp().getDB().videoInfoDao.insert(this)
                 getApp().getDB().videoInfoDao.detachAll()

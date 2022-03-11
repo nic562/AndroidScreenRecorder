@@ -13,7 +13,7 @@ class RemoteCallingReceiver : BroadcastReceiver(), SomethingWithNetTrafficStatis
         ctx = context
         Log.i(tag, "Broadcast receive action: ${intent?.action} ---> ${intent?.extras}")
         when (intent?.action) {
-            getStr(R.string.broadcast_receiver_action_remote_calling) -> {
+            getStr(R.string.broadcast_receiver_action_remote_calling_sv) -> {
                 when (intent.getStringExtra("action")) {
                     "startNetTrafficStatistics" -> {
                         val app = intent.getStringExtra("app")
