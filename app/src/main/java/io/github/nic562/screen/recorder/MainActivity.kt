@@ -15,7 +15,10 @@ import androidx.navigation.ui.setupActionBarWithNavController
 import com.google.android.material.snackbar.Snackbar
 import io.github.nic562.screen.recorder.base.SomethingWithBackPressed
 import io.github.nic562.screen.recorder.databinding.ActivityMainBinding
+import io.github.nic562.screen.recorder.db.ApiInfo
+import io.github.nic562.screen.recorder.db.dao.ApiInfoDao
 import java.io.File
+import java.net.URLDecoder
 import java.util.*
 
 class MainActivity : AppCompatActivity() {
@@ -163,9 +166,18 @@ class MainActivity : AppCompatActivity() {
         super.onNewIntent(intent)
     }
 
+    private fun formatUrlArgs(s: String?): String {
+        if (s == null) {
+            return ""
+        }
+        val fs = URLDecoder.decode(s, "utf8").split("&")
+        return fs.joinToString("\n")
+    }
+
     private val handler by lazy {
         Handler(mainLooper)
     }
+
     private fun handingIntent(intent: Intent?) {
         if (intent == null) {
             return
@@ -175,7 +187,7 @@ class MainActivity : AppCompatActivity() {
             Config.setAutoStopRecord(intent.getBooleanExtra("auto_stop_record", false))
             Config.setRecordCountDownSeconds(intent.getIntExtra("record_count_down_second", 3))
         } else if (intent.hasExtra("ui")) {
-            when(val action = intent.getStringExtra("ui")) {
+            when (val action = intent.getStringExtra("ui")) {
                 "startRecord" -> {
                     recordCustomKey = intent.getStringExtra("key")
                     handler.postDelayed({
@@ -183,6 +195,49 @@ class MainActivity : AppCompatActivity() {
                             putExtra("action", action)
                         })
                     }, 300)
+                }
+            }
+        } else if (intent.hasExtra("data")) {
+            when (val action = intent.getStringExtra("data")) {
+                "api" -> {
+                    val title = intent.getStringExtra("title")
+                    val url = intent.getStringExtra("url")
+                    val method = intent.getStringExtra("method")
+                    val uploadFileArgName = intent.getStringExtra("uploadFileArgName")
+                    var header = intent.getStringExtra("header")
+                    var body = intent.getStringExtra("body")
+                    val isBodyEncoding = intent.getBooleanExtra("isBodyEncoding", false)
+
+                    if (title == null || url == null || method == null || uploadFileArgName == null) {
+                        return
+                    }
+                    header = formatUrlArgs(header)
+                    body = formatUrlArgs(body)
+                    val apiDao = getApp().getDB().apiInfoDao
+                    val q =
+                        apiDao.queryBuilder().where(ApiInfoDao.Properties.Title.eq(title)).limit(1)
+                            .list()
+                    if (q.size > 0) {
+                        val api = q[0]
+                        api.method = ApiInfo.Method.valueOf(method)
+                        api.header = header
+                        api.body = body
+                        api.isBodyEncoding = isBodyEncoding
+                        api.uploadFileArgName = uploadFileArgName
+                        apiDao.update(api)
+                    } else {
+                        val api = ApiInfo(
+                            null,
+                            title,
+                            url,
+                            ApiInfo.Method.valueOf(method),
+                            header,
+                            body,
+                            isBodyEncoding,
+                            uploadFileArgName
+                        )
+                        apiDao.insert(api)
+                    }
                 }
             }
         }
