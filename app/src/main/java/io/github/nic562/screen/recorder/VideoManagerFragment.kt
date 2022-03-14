@@ -19,6 +19,7 @@ import io.github.nic562.screen.recorder.base.BaseFragment
 import io.github.nic562.screen.recorder.base.SomethingWithImageLoader
 import io.github.nic562.screen.recorder.databinding.FragmentVideoManagerBinding
 import io.github.nic562.screen.recorder.db.VideoInfo
+import io.github.nic562.screen.recorder.db.dao.VideoInfoDao
 import io.github.nic562.screen.recorder.tools.DateUtil
 import java.io.File
 
@@ -29,10 +30,6 @@ class VideoManagerFragment : BaseFragment(), View.OnClickListener {
     private val uploadStatus = hashMapOf<Long, Int>()
     private val adapter: VideoInfoAdapter by lazy {
         VideoInfoAdapter(videoList, uploadStatus, this)
-    }
-
-    private val svIntent by lazy {
-        Intent(requireContext(), UploadService::class.java)
     }
 
     private val broadcastReceiver = object : BroadcastReceiver() {
@@ -93,7 +90,7 @@ class VideoManagerFragment : BaseFragment(), View.OnClickListener {
     override fun onStart() {
         super.onStart()
         videoList.clear()
-        videoList.addAll(getDB().videoInfoDao.queryBuilder().list())
+        videoList.addAll(getDB().videoInfoDao.queryBuilder().orderDesc(VideoInfoDao.Properties.CreateTime).list())
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -265,10 +262,7 @@ class VideoManagerFragment : BaseFragment(), View.OnClickListener {
             .setSingleChoiceItems(StringArrayAdapter(requireContext(), names), 0) { dialog, which ->
                 val apiInfo = api[which]
                 dialog.dismiss()
-                requireActivity().startService(svIntent.apply {
-                    putExtra("apiID", apiInfo.id)
-                    putExtra("videoID", videoInfo.id)
-                })
+                UploadService.startUpload(requireActivity(), videoInfo, apiInfo)
                 uploadStatus[videoInfo.id] = -1
                 notifyVideoItemChangedByID(videoInfo.id)
             }

@@ -21,6 +21,10 @@ object Config {
         return preference.getBoolean("auto_delete", false)
     }
 
+    fun setAutoDelete(b: Boolean) {
+        preference.putBoolean("auto_delete", b)
+    }
+
     fun getAutoStopRecord(): Boolean {
         return preference.getBoolean("auto_stop_record", false)
     }

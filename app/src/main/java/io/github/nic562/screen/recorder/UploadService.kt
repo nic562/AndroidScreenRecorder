@@ -29,6 +29,15 @@ import kotlin.math.roundToInt
  * Created by Nic on 2021/11/28.
  */
 class UploadService : Service() {
+    companion object {
+        fun startUpload(ctx: Context, videoInfo: VideoInfo, apiInfo: ApiInfo) {
+            ctx.startService(Intent(ctx, UploadService::class.java).apply {
+                putExtra("apiID", apiInfo.id)
+                putExtra("videoID", videoInfo.id)
+            })
+        }
+    }
+
     private val notificationChannel = "uploadService"
 
     private val logger by lazy {

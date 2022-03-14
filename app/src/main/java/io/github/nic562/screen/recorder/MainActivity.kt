@@ -17,14 +17,16 @@ import io.github.nic562.screen.recorder.base.SomethingWithBackPressed
 import io.github.nic562.screen.recorder.databinding.ActivityMainBinding
 import io.github.nic562.screen.recorder.db.ApiInfo
 import io.github.nic562.screen.recorder.db.dao.ApiInfoDao
+import io.github.nic562.screen.recorder.db.dao.VideoInfoDao
 import java.io.File
 import java.net.URLDecoder
 import java.util.*
 
 class MainActivity : AppCompatActivity() {
-    private val tag by lazy {
-        this.javaClass.name
+    companion object {
+        val TAG = MainActivity::javaClass.name
     }
+
     private val reqCodeScreenRecord = 101
 
     private lateinit var appBarConfiguration: AppBarConfiguration
@@ -120,7 +122,7 @@ class MainActivity : AppCompatActivity() {
                         }
                         else -> {
                             Log.w(
-                                tag,
+                                TAG,
                                 "unKnow broadcastReceiver action for [${accessBroadcastAction}]: $act"
                             )
                         }
@@ -186,6 +188,7 @@ class MainActivity : AppCompatActivity() {
             Config.setAutoToBack(intent.getBooleanExtra("auto_2back", false))
             Config.setAutoStopRecord(intent.getBooleanExtra("auto_stop_record", false))
             Config.setRecordCountDownSeconds(intent.getIntExtra("record_count_down_second", 3))
+            Config.setAutoDelete(intent.getBooleanExtra("record_auto_delete", false))
         } else if (intent.hasExtra("ui")) {
             when (val action = intent.getStringExtra("ui")) {
                 "startRecord" -> {
@@ -209,6 +212,7 @@ class MainActivity : AppCompatActivity() {
                     val isBodyEncoding = intent.getBooleanExtra("isBodyEncoding", false)
 
                     if (title == null || url == null || method == null || uploadFileArgName == null) {
+                        Log.w(TAG, "api args can not be null!")
                         return
                     }
                     header = formatUrlArgs(header)
@@ -220,6 +224,7 @@ class MainActivity : AppCompatActivity() {
                     if (q.size > 0) {
                         val api = q[0]
                         api.method = ApiInfo.Method.valueOf(method)
+                        api.url = url
                         api.header = header
                         api.body = body
                         api.isBodyEncoding = isBodyEncoding
@@ -237,6 +242,30 @@ class MainActivity : AppCompatActivity() {
                             uploadFileArgName
                         )
                         apiDao.insert(api)
+                    }
+                }
+
+                "upload" -> {
+                    val apiTitle = intent.getStringExtra("apiTitle")
+                    val videoKeys = intent.getStringExtra("videoKeys")
+                    if (apiTitle == null || videoKeys == null) {
+                        Log.w(TAG, "upload args can not be null!")
+                        return
+                    }
+                    val apis = getApp().getDB().apiInfoDao.queryBuilder().where(ApiInfoDao.Properties.Title.eq(apiTitle)).limit(1).list()
+                    if (apis.size == 0) {
+                        Log.w(TAG, "upload api matching `${apiTitle}` failed!")
+                        return
+                    }
+                    val videos = getApp().getDB().videoInfoDao.queryBuilder().where(VideoInfoDao.Properties.CustomKey.`in`(videoKeys.split(","))).list()
+                    if (videos.size == 0) {
+                        Log.w(TAG, "find not videos for `${videoKeys}`!")
+                        return
+                    }
+                    val api = apis[0]
+                    for (v in videos) {
+                        Log.i(TAG, "Willing to upload VideoInfo[${v.id} - ${v.customKey}] to ${api.title}")
+                        UploadService.startUpload(this, v, api)
                     }
                 }
             }
