@@ -84,6 +84,10 @@ class MainActivity : AppCompatActivity() {
         Intent(this, MediaRecordService::class.java)
     }
 
+    private val uiIntent by lazy {
+        Intent(getString(R.string.broadcast_receiver_action_remote_calling_ui))
+    }
+
     private val svConn by lazy {
         object : ServiceConnection {
             override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
@@ -180,6 +184,14 @@ class MainActivity : AppCompatActivity() {
         Handler(mainLooper)
     }
 
+    private fun callUI(actionName: String, delayMs:Long = 300) {
+        handler.postDelayed({
+            sendBroadcast(uiIntent.apply {
+                putExtra("action", actionName)
+            })
+        }, delayMs)
+    }
+
     private fun handingIntent(intent: Intent?) {
         if (intent == null) {
             return
@@ -193,11 +205,7 @@ class MainActivity : AppCompatActivity() {
             when (val action = intent.getStringExtra("ui")) {
                 "startRecord" -> {
                     recordCustomKey = intent.getStringExtra("key")
-                    handler.postDelayed({
-                        sendBroadcast(Intent(getString(R.string.broadcast_receiver_action_remote_calling_ui)).apply {
-                            putExtra("action", action)
-                        })
-                    }, 300)
+                    callUI(action)
                 }
             }
         } else if (intent.hasExtra("data")) {
@@ -267,6 +275,7 @@ class MainActivity : AppCompatActivity() {
                         Log.i(TAG, "Willing to upload VideoInfo[${v.id} - ${v.customKey}] to ${api.title}")
                         UploadService.startUpload(this, v, api)
                     }
+                    callUI("openScreenRecord")
                 }
             }
         }

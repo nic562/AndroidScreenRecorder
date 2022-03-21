@@ -40,6 +40,9 @@ class MainFragment : BaseFragment(), View.OnClickListener {
                         "startRecord" -> {
                             binding.btnRecordStart.performClick()
                         }
+                        "openScreenRecord" -> {
+                            binding.btnVideo.performClick()
+                        }
                     }
                 }
                 uploadBroadcastAction -> {
