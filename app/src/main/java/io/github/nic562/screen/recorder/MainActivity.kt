@@ -157,18 +157,23 @@ class MainActivity : AppCompatActivity() {
         handingIntent(intent)
     }
 
+    private fun stopRecording() {
+        sendBroadcast(Intent(getString(R.string.broadcast_receiver_action_media_record_service)).apply {
+            putExtra("action", "stopRecording")
+        })
+    }
+
     override fun onNewIntent(intent: Intent?) {
         if (intent?.extras?.getBoolean("stopRecording") == true) {
-            sendBroadcast(Intent(getString(R.string.broadcast_receiver_action_media_record_service)).apply {
-                putExtra("action", "stopRecording")
-            })
+            stopRecording()
         } else if (intent?.extras?.getBoolean("startRecord") == true) {
             if (sv?.isRecording() == true) {
                 return
             }
             requestRecording()
+        } else {
+            handingIntent(intent)
         }
-        handingIntent(intent)
         super.onNewIntent(intent)
     }
 
@@ -206,6 +211,10 @@ class MainActivity : AppCompatActivity() {
                 "startRecord" -> {
                     recordCustomKey = intent.getStringExtra("key")
                     callUI(action)
+                }
+                "stopRecording" -> {
+                    Log.w(TAG, "StopRecording!!!!!")
+                    stopRecording()
                 }
             }
         } else if (intent.hasExtra("data")) {
