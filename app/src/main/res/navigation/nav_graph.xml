@@ -63,7 +63,7 @@
     <fragment
         android:id="@+id/logFragment"
         android:name="io.github.nic562.screen.recorder.LogFragment"
-        android:label="@string/upload_log"
+        android:label="@string/log"
         tools:layout="@layout/fragment_log">
         <argument
             android:name="log"
@@ -75,5 +75,9 @@
         android:name="io.github.nic562.screen.recorder.NetTrafficFragment"
         android:label="@string/net_traffic_statistics"
         tools:layout="@layout/fragment_net_traffic"
-        />
+        >
+        <action
+            android:id="@+id/action_netTrafficFragment_to_logFragment"
+            app:destination="@id/logFragment" />
+    </fragment>
 </navigation>

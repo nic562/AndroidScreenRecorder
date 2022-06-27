@@ -18,12 +18,14 @@ import android.widget.TextView
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.widget.addTextChangedListener
+import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.snackbar.Snackbar
 import io.github.nic562.screen.recorder.base.BaseFragment
 import io.github.nic562.screen.recorder.base.SomethingWithNotification
 import io.github.nic562.screen.recorder.databinding.FragmentNetTrafficBinding
+import java.io.File
 
 class NetTrafficFragment : BaseFragment(), View.OnClickListener,
     SomethingWithNetTrafficStatistics,
@@ -32,6 +34,9 @@ class NetTrafficFragment : BaseFragment(), View.OnClickListener,
     private val binding get() = _binding!!
     private val reqCodeNotificationSetting = 101
     private val reqCodeFilePermissionSetting = 102
+    private val logFilePath: String by lazy {
+        File(requireActivity().getExternalFilesDir("tmp")!!.absolutePath, "net-traffic.log").absolutePath
+    }
 
     override val notificationChannel: String = "test" // 本Fragment暂时不发送通知，因此暂时无用
     override val notificationManager: NotificationManagerCompat by lazy {
@@ -72,6 +77,7 @@ class NetTrafficFragment : BaseFragment(), View.OnClickListener,
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         binding.let {
+            it.btnReadLog.setOnClickListener(this)
             it.btnStart.setOnClickListener(this)
             it.rvAppList.layoutManager =
                 LinearLayoutManager(requireContext(), LinearLayoutManager.VERTICAL, false)
@@ -199,6 +205,25 @@ class NetTrafficFragment : BaseFragment(), View.OnClickListener,
                         reqCodeFilePermissionSetting
                     )
             }
+            binding.btnReadLog.id -> {
+                val logFile = File(logFilePath)
+                if (logFile.exists()) {
+                    val rs = logFile.readText()
+                    if (rs.isEmpty()) {
+                        Snackbar.make(binding.root, R.string.file_not_exists, Snackbar.LENGTH_LONG)
+                            .show()
+                        return
+                    }
+                    findNavController().navigate(
+                        R.id.action_netTrafficFragment_to_logFragment,
+                        Bundle().apply {
+                            putString("log", rs)
+                        })
+                } else {
+                    Snackbar.make(binding.root, R.string.file_not_exists, Snackbar.LENGTH_LONG)
+                        .show()
+                }
+            }
         }
     }
 
@@ -213,7 +238,14 @@ class NetTrafficFragment : BaseFragment(), View.OnClickListener,
             isStart = false
             stopStatisticsService()
         } else {
-            startStatisticsService(chooseAppPkgList.toList())
+            File(logFilePath).apply {
+                if (exists()) {
+                    this.delete()
+                }
+            }
+            val bu = Bundle()
+            bu.putString("save2File", logFilePath)
+            startStatisticsService(chooseAppPkgList.toList(), bu)
         }
     }
 

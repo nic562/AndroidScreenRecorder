@@ -46,7 +46,7 @@
     <string name="auto_upload_description">完成录屏后，根据默认接口自动上传录屏视频</string>
     <string name="auto_delete">视频自动删除</string>
     <string name="auto_delete_description">完成上传后自动删除录屏视频记录</string>
-    <string name="upload_log">上传日志</string>
+    <string name="log">日志</string>
     <string name="upload_args_encoding">是否编码请求参数</string>
     <string name="upload_args_encoding_description">用URLEncode的方式编码请求体中的参数值</string>
     <string name="upload_finish">完成上传</string>
@@ -74,5 +74,8 @@
     <string name="not_start">未开启</string>
     <string name="please_stop_first">请先停止监听</string>
     <string name="log_permission">授权日志文件</string>
+    <string name="read_log">读取日志</string>
+    <string name="file_not_exists">文件不存在</string>
+    <string name="file_is_empty">文件为空</string>
 
 </resources>

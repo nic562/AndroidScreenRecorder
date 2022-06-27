@@ -11,6 +11,7 @@ import java.io.Closeable
 import java.io.File
 import java.io.FileWriter
 import java.lang.Exception
+import java.time.LocalDateTime
 
 interface NetTrafficStatisticsServiceHelper : SomethingWithNotification {
 
@@ -130,7 +131,8 @@ interface NetTrafficStatisticsServiceHelper : SomethingWithNotification {
         } - ${getContext().getString(R.string.upload_speed, upByteSize / 1024.0)}"
         notify(msg)
         sendNetTrafficBroadcastWorking(downByteSize, upByteSize)
-        saveFile?.write("$idx\t$downByteSize\t$upByteSize")
+        val current = LocalDateTime.now()
+        saveFile?.write("$current\t$downByteSize\t$upByteSize")
     }
 
     fun onNetTrafficStatisticsCreate() {

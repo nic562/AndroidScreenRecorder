@@ -22,9 +22,19 @@
         android:layout_height="wrap_content"
         android:text="@string/log_permission"
         app:layout_constraintBottom_toBottomOf="@id/btn_start"
-        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/btn_read_log"
         app:layout_constraintStart_toEndOf="@id/btn_start"
         app:layout_constraintTop_toTopOf="@id/btn_start" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btn_read_log"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/read_log"
+        app:layout_constraintBottom_toBottomOf="@id/btn_permission"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@id/btn_permission"
+        app:layout_constraintTop_toTopOf="@id/btn_permission" />
 
     <TextView
         android:id="@+id/tv_apps"
