@@ -49,6 +49,7 @@ interface NetTrafficStatisticsServiceHelper : SomethingWithNotification {
      * 初始化时置空null 即可
      */
     var saveFile: NetTrafficStatisticsLogHandler?
+    var logDateTime: Boolean
 
     fun onNetTrafficReceiveActionToStop()
 
@@ -131,8 +132,12 @@ interface NetTrafficStatisticsServiceHelper : SomethingWithNotification {
         } - ${getContext().getString(R.string.upload_speed, upByteSize / 1024.0)}"
         notify(msg)
         sendNetTrafficBroadcastWorking(downByteSize, upByteSize)
-        val current = LocalDateTime.now()
-        saveFile?.write("$current\t$downByteSize\t$upByteSize")
+        if (logDateTime) {
+            val current = LocalDateTime.now()
+            saveFile?.write("$current\t$downByteSize\t$upByteSize")
+        } else {
+            saveFile?.write("$idx\t$downByteSize\t$upByteSize")
+        }
     }
 
     fun onNetTrafficStatisticsCreate() {
@@ -149,6 +154,7 @@ interface NetTrafficStatisticsServiceHelper : SomethingWithNotification {
     fun onNetTrafficStartCommand(intent: Intent?, flags: Int, startId: Int): Boolean {
         when (intent?.getStringExtra("action")) {
             "start" -> {
+                logDateTime = intent.getBooleanExtra("logDateTime", false)
                 val path = intent.getStringExtra("save2File")
                 if (path != null && path.isNotBlank()) {
                     val onError = object : NetTrafficStatisticsLogHandler.OnError {

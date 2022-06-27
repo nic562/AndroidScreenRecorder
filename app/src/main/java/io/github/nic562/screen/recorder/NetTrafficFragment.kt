@@ -245,6 +245,7 @@ class NetTrafficFragment : BaseFragment(), View.OnClickListener,
             }
             val bu = Bundle()
             bu.putString("save2File", logFilePath)
+            bu.putBoolean("logDateTime", true)
             startStatisticsService(chooseAppPkgList.toList(), bu)
         }
     }

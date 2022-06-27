@@ -42,6 +42,7 @@ class NetTrafficStatisticsService : BaseForegroundService(), NetTrafficStatistic
     }
 
     override var saveFile: NetTrafficStatisticsServiceHelper.NetTrafficStatisticsLogHandler? = null
+    override var logDateTime: Boolean = false
 
     override fun onNetTrafficReceiveActionToStop() {
         stopSelf()

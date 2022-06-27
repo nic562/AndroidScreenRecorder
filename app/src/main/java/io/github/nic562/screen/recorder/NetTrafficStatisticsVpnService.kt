@@ -91,6 +91,7 @@ class NetTrafficStatisticsVpnService : VpnService(), NetTrafficStatisticsService
     }
 
     override var saveFile: NetTrafficStatisticsServiceHelper.NetTrafficStatisticsLogHandler? = null
+    override var logDateTime: Boolean = false
 
     override fun onNetTrafficReceiveActionToStart(intent: Intent) {
         if (tunnelThread == null || tunnelThread?.isAlive == false) {
