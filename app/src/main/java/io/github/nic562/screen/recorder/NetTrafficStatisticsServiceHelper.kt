@@ -194,6 +194,10 @@ interface NetTrafficStatisticsServiceHelper : SomethingWithNotification {
 
         init {
             if (!file.exists()) {
+                val dirPath = File(file.parent!!)
+                if (!dirPath.exists()) {
+                    dirPath.mkdirs()
+                }
                 file.createNewFile()
             }
         }
